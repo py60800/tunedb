@@ -1,0 +1,429 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+
+	"github.com/py60800/tunedb/internal/imgprint"
+	"github.com/py60800/tunedb/internal/player"
+	"github.com/py60800/tunedb/internal/svgtab"
+	"github.com/py60800/tunedb/internal/util"
+	"github.com/py60800/tunedb/internal/zdb"
+
+	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/gtk"
+)
+
+type ZContext struct {
+	// ********
+	win   *gtk.Window
+	menu  *gtk.MenuBar
+	Image *TImage
+	clip  *gtk.Clipboard
+
+	DB                 *zdb.TuneDB
+	mp3Collection      *zdb.MP3Collection
+	sourceRepositories []zdb.SourceRepository
+
+	tuneCtx    *TuneCtx
+	ActiveTune *zdb.DTune
+
+	tuneSelector *TuneSelector
+	metronome    *WMetronome
+	cursor       *gtk.DrawingArea
+
+	playCtrl     *gtk.Box
+	extLinkCtrl  *ExtLinkCtrl
+	listMgr      *ListMgr
+	midiPlayCtrl *MidiPlayCtrl
+
+	setPlayCtrl   *SetPlayCtrl
+	abcImport     *AbcImporter
+	mp3PlayButton *gtk.Button
+
+	mp3Player      *player.Mp3Player
+	mp3SetPlayer   *Mp3SetConfigurator
+	printer        *imgprint.Printer
+	svgt           *svgtab.SvgTab
+	concertinaCtrl *ConcertinaCtrl
+}
+
+var ziqueContext ZContext
+
+func GetContext() *ZContext {
+	return &ziqueContext
+}
+
+func ActiveTune() *zdb.DTune {
+	if ziqueContext.ActiveTune == nil || ziqueContext.ActiveTune.ID == 0 {
+		return nil
+	}
+	return ziqueContext.ActiveTune
+}
+
+func Message(msg string) {
+	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
+	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_CLOSE, msg)
+	d.Run()
+	d.Destroy()
+}
+func MessageConfirm(msg string) bool {
+	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
+	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_OK_CANCEL, msg)
+	r := d.Run()
+	d.Destroy()
+	return r == gtk.RESPONSE_OK
+}
+
+func (c *ZContext) ScanMp3() {
+	zdb.MP3DBUpdate(c.DB)
+	c.mp3Collection = zdb.MP3CollectionNew(c.DB)
+}
+func (c *ZContext) MkMenu() {
+	c.menu, _ = gtk.MenuBarNew()
+	appMenu, _ := gtk.MenuItemNewWithLabel("App")
+	c.menu.Append(appMenu)
+	configMenu, _ := gtk.MenuItemNewWithLabel("Config")
+	c.menu.Append(configMenu)
+
+	appMenuGroup, _ := gtk.MenuNew()
+	appMenu.SetSubmenu(appMenuGroup)
+	refreshEntry, _ := gtk.MenuItemNewWithLabel("Scan MuseScore Repositories")
+	refreshEntry.Connect("activate", func() { c.TUpdate() })
+
+	appMenuGroup.Append(refreshEntry)
+	fmMp3, _ := gtk.MenuItemNewWithLabel("Scan MP3 Repositories")
+	fmMp3.Connect("activate", func() {
+		c.ScanMp3()
+
+	})
+	appMenuGroup.Append(fmMp3)
+
+	/*	refreshAbc, _ := gtk.MenuItemNewWithLabel("Scan ABC Repositories")
+		refreshAbc.Connect("activate", func() { zdb.AbcDBUpdate(c.DB) })
+		appMenuGroup.Append(refreshAbc)*/
+
+	statEntry, _ := gtk.MenuItemNewWithLabel("Stats")
+	appMenuGroup.Append(statEntry)
+	statEntry.Connect("activate", func() {
+		c.DisplayStats()
+	})
+
+	quitEntry, _ := gtk.MenuItemNewWithLabel("Quit")
+	appMenuGroup.Append(quitEntry)
+	quitEntry.Connect("activate", func() {
+		gtk.MainQuit()
+	})
+
+	configMenuGroup, _ := gtk.MenuNew()
+	configMenu.SetSubmenu(configMenuGroup)
+	configSource, _ := gtk.MenuItemNewWithLabel("Configure Sources")
+	configSource.Connect("activate", func() {
+		c.SourceConfiguration()
+	})
+	configMenuGroup.Append(configSource)
+	configTK, _ := gtk.MenuItemNewWithLabel("Configure Tune Kinds")
+	configTK.Connect("activate", func() {
+		c.TuneKindConfiguration()
+	})
+	configMenuGroup.Append(configTK)
+
+}
+func (c *ZContext) LoadTuneByID(id int, keepPlayContext bool, forceReload bool) {
+	if c.GetCurrentTuneID() == id && !forceReload {
+		return
+	}
+	tune := c.DB.TuneGetByID(id)
+	if tune.ID != 0 {
+		c.LoadTune(&tune, keepPlayContext)
+	}
+
+}
+
+func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
+	c.ActiveTune = tune
+	c.svgt = nil
+	if c.concertinaCtrl != nil {
+		c.concertinaCtrl.Hide()
+	}
+	c.tuneCtx.LoadTune(tune, keepPlayContext)
+
+	if !keepPlayContext {
+		c.midiPlayCtrl.SetTempo(tune.Tempo, tune.Kind)
+		c.midiPlayCtrl.SetInstrument(tune.Instrument)
+	}
+
+	c.mp3SetPlayer.ShowCount(tune.ID)
+	c.extLinkCtrl.UpdateTuneLinks(c, tune.ID)
+	c.setPlayCtrl.SetCount(c.DB.TuneSetGetCount(tune.ID))
+
+	c.Image.Refresh()
+	c.MarkOK()
+}
+
+func Quit() {
+	GetContext().midiPlayCtrl.Stop()
+	GetContext().midiPlayCtrl.Zique.Kill()
+	GetContext().mp3Player.Stop()
+	gtk.MainQuit()
+}
+func (c *ZContext) SetHeader(change bool) {
+	header := wHeader
+	if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
+		header += "\t\t" + fmt.Sprintf("%s [%d]", tune.Title, tune.ID)
+	}
+	if change {
+		header += " *"
+	}
+	c.win.SetTitle(header)
+}
+
+func (c *ZContext) MarkChange() {
+	c.SetHeader(true)
+}
+func (c *ZContext) MarkOK() {
+	c.SetHeader(false)
+}
+func (c *ZContext) GetCurrentTuneID() int {
+	if c.ActiveTune == nil {
+		return 0
+	}
+	return c.ActiveTune.ID
+}
+func (c *ZContext) Refresh() {
+	if c.ActiveTune != nil {
+		c.tuneCtx.LoadTune(c.ActiveTune, false)
+	}
+}
+
+// Tune Context
+
+func (c *ZContext) TUpdate() {
+	c.DB.MsczContentUpdate()
+	c.Refresh()
+	c.tuneSelector.Refresh()
+	c.DB.PurgeMscz()
+}
+func (c *ZContext) Stop() {
+	c.midiPlayCtrl.Stop()
+	c.mp3Player.Stop()
+	c.metronome.MetronomeHide()
+
+}
+func (c *ZContext) MkPlayCtrl() {
+	Css := `button#bplay, button#bpause, button#bstop { 
+	             font-size: 32px ;
+				color: red ;
+				}
+			 viewport { 
+	             border-color: black ;
+				}`
+
+	CssP, _ := gtk.CssProviderNew()
+	CssP.LoadFromData(Css)
+	c.playCtrl, _ = gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 1)
+	//------------------------------------------- Play Control
+	midiPlay, _ := gtk.ButtonNewWithLabel("Play:Midi")
+	midiPlay.Connect("clicked", func() {
+		c.Stop()
+		if tune := c.ActiveTune; tune != nil && tune.ID != 0 && len(tune.Xml) > 0 {
+			c.midiPlayCtrl.Zique.Play(tune.Xml)
+			c.metronome.MetronomeShow()
+		}
+	})
+	c.playCtrl.Add(midiPlay)
+	c.mp3PlayButton, _ = gtk.ButtonNewWithLabel("Play:MP3")
+	c.mp3PlayButton.Connect("clicked", func() {
+		c.Stop()
+		c.mp3SetPlayer.PlayDefault()
+
+	})
+	c.playCtrl.Add(c.mp3PlayButton)
+
+	bstop, _ := gtk.ButtonNewWithLabel("Stop")
+	bstop.Connect("clicked", func() {
+		c.Stop()
+	})
+	c.playCtrl.Add(bstop)
+
+}
+func (c *ZContext) CursorDraw() {
+	c.cursor.QueueDraw()
+}
+
+var previousAlloc *gtk.Allocation
+
+func (c *ZContext) RefreshTune() {
+	if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
+		if tune.FileType == zdb.FileTypeMscz {
+			date, _ := util.GetModificationDate(tune.File)
+			c.DB.MsczTuneSave(tune.File, "", date)
+			c.Image.ForceUpdate()
+			c.LoadTuneByID(tune.ID, true, true)
+		}
+	}
+}
+func (c *ZContext) MakeUI() {
+	var w gtk.IWidget
+
+	// Main window ---------------------------
+	c.win, _ = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	c.win.SetSizeRequest(800, 600)
+
+	grid, _ := gtk.GridNew()
+	firstLine, _ := gtk.GridNew()
+	c.win.Add(grid)
+	c.win.Connect("destroy", Quit)
+
+	c.MkMenu()
+	grid.Attach(c.menu, 0, 0, 6, 1)
+	grid.Attach(firstLine, 0, 1, 12, 1)
+
+	body, _ := gtk.GridNew()
+	firstCol, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 1)
+
+	var wTuneCtx gtk.IWidget
+	c.tuneCtx, wTuneCtx = c.MkTuneCtx()
+	firstCol.Add(wTuneCtx)
+	var wm gtk.IWidget
+	c.metronome, wm = c.MkMetro()
+	firstCol.Add(wm)
+	xc := 0
+	body.Attach(firstCol, 0, 0, 3, 1)
+	xc += 3
+	firstCol.SetHAlign(gtk.ALIGN_START)
+
+	// Image
+	var wImg *gtk.Widget
+	c.Image, wImg = c.MkImage()
+	body.Attach(wImg, xc, 0, 8, 1)
+	wImg.SetHAlign(gtk.ALIGN_CENTER)
+	xc += 8
+
+	//-------------------------- Tune Filter
+	c.tuneSelector, w = c.MkTuneSelector()
+	firstLine.Attach(w, 0, 1, 3, 1)
+
+	c.cursor, _ = gtk.DrawingAreaNew()
+	c.cursor.SetMarginStart(20)
+	c.cursor.SetMarginEnd(20)
+	c.cursor.SetSizeRequest(400, 30)
+
+	c.MkPlayCtrl()
+	firstLine.AttachNextTo(c.cursor, w, gtk.POS_RIGHT, 3, 1)
+	firstLine.AttachNextTo(c.playCtrl, c.cursor, gtk.POS_RIGHT, 8, 1)
+
+	cpy := MkButton("^C", func() {
+		if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
+			c.clip.SetText(tune.Title)
+		}
+	})
+	firstLine.AttachNextTo(cpy, c.playCtrl, gtk.POS_RIGHT, 1, 1)
+
+	leftColumn, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
+
+	edit := MkButton("Muse Edit", func() {
+		if tune := c.ActiveTune; tune != nil {
+			zdb.MuseEdit(tune.File)
+		}
+	})
+	leftColumn.Add(edit)
+	refresh := MkButton("Refresh Tune", func() {
+		c.RefreshTune()
+	})
+	leftColumn.Add(refresh)
+	if WithConcertina {
+		c.concertinaCtrl, w = ConcertinaCtrlNew()
+		leftColumn.Add(w)
+	}
+
+	c.setPlayCtrl, w = MkSetPlayCtrl()
+	leftColumn.Add(w)
+
+	c.listMgr, w = MkListMgr()
+	leftColumn.Add(w)
+
+	c.midiPlayCtrl, w = c.MkMidiPlayCtrl()
+	leftColumn.Add(w)
+
+	c.extLinkCtrl, w = c.MkExtLinkCtrl()
+	leftColumn.Add(w)
+
+	c.mp3SetPlayer, w = MkMp3SetConfigurator(c.cursor)
+	leftColumn.Add(w)
+
+	w = TheSessionCtrlNew()
+	leftColumn.Add(w)
+
+	c.abcImport, w = c.MkAbcImport()
+	leftColumn.Add(w)
+	print := MkButton("Print...", func() {
+		if c.ActiveTune != nil && c.ActiveTune.ID != 0 {
+			file := c.ActiveTune.Img
+			if c.svgt != nil {
+				file = c.svgt.TempFile
+			}
+			c.printer.Run([]string{file})
+		}
+	})
+	leftColumn.Add(print)
+	body.Attach(leftColumn, xc, 0, 2, 1)
+	grid.Attach(body, 0, 2, 12, 1)
+	c.win.Maximize()
+	c.win.ShowAll()
+	c.win.Connect("size-allocate", func(w *gtk.Window) {
+		sc := w.GetScreen()
+		di, _ := sc.GetDisplay()
+		mo, _ := di.GetMonitor(0)
+		geo := mo.GetGeometry()
+
+		bodyAllocation := body.GetAllocation()
+		rightA := firstCol.GetAllocation()
+		leftA := leftColumn.GetAllocation()
+		remainder := leftA.GetX() - (rightA.GetX() + rightA.GetWidth())
+
+		if geo != nil && bodyAllocation.GetWidth() > geo.GetWidth() {
+			w.Resize(bodyAllocation.GetWidth()-50, geo.GetHeight()-50)
+			c.Image.SetSizeRequest(geo.GetWidth()/2, geo.GetHeight()/2)
+		} else {
+
+			c.Image.SetSizeRequest(remainder-50, bodyAllocation.GetHeight()-50)
+
+		}
+		winAllocation := w.GetAllocation()
+		if previousAlloc == nil || *previousAlloc != *winAllocation {
+			previousAlloc = winAllocation
+		}
+
+	})
+	display, _ := gdk.DisplayGetDefault()
+	c.clip, _ = gtk.ClipboardGetForDisplay(display, gdk.SELECTION_CLIPBOARD)
+}
+
+// ****************************************************************************
+var WithConcertina bool
+
+func main() {
+	var workingDir string
+	flag.BoolVar(&WithConcertina, "concertina", false, "Add concertina tab generator")
+	flag.StringVar(&workingDir, "d", "", "Working directory")
+	flag.Parse()
+	MakeHomeContext(workingDir)
+	gtk.Init(nil)
+
+	c := GetContext()
+	c.DB = zdb.TuneDBNew()
+	util.HelperInit(ConfigBase)
+	zdb.ParamInit(c.DB)
+
+	c.sourceRepositories = c.DB.SourceRepositoryGetAll()
+	c.DB.MsczContentUpdate()
+
+	c.mp3Collection = zdb.MP3CollectionNew(c.DB)
+	c.mp3Player = player.Mp3PlayerNew()
+	c.MakeUI()
+	c.tuneSelector.Refresh()
+	c.printer = imgprint.PrinterNew()
+	gtk.Main()
+
+}

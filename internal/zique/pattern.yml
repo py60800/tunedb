@@ -1,0 +1,117 @@
+---
+param:
+    - &longR
+      type: quarver
+      dot: true
+      timing: [600, 100, 500, 150, 450]
+      velocity: [100, 80, 100, 50, 100]
+    - &shortR
+      type: quarver
+      dot: false
+      timing: [1, 199, 200, 200, 600]
+      velocity: [0, 80, 80, 80, 100]
+roll:
+  -
+    note: D
+    <<: *shortR
+    seq: [D, G, D, F#, D]
+  -
+    note: D
+    <<: *longR
+    seq: [D, G, D, F#, D]
+  -
+    note: E
+    <<: *shortR
+    seq: [E, G, E, D, E]
+  -
+    note: E
+    <<: *longR
+    seq: [E, G, E, D, E]
+  -    
+    note: F#
+    <<: *shortR
+    seq: [   F#, A, F#, E, F#]
+  -
+    note: F#
+    <<: *longR
+    seq: [   F#, A, F#, E, F#]
+  -
+    note: G    
+    <<: *shortR
+    seq: [   G, A, G, F#, G]
+  -
+    note: G    
+    <<: *longR
+    seq: [   G, A, G, F#, G]
+  -  
+    note: A
+    <<: *shortR
+    seq: [A, B, A, G, A]
+  -  
+    note: A
+    <<: *longR
+    seq: [A, B, A, G, A]
+  -    
+    note: B
+    <<: *shortR
+    seq: [B, ^C#, B, A, B]
+  -    
+    note: B
+    <<: *longR
+    seq: [B, ^C#, B, A, B]
+drumpatch:
+   lowtomf: 41
+   hibongo: 60
+   lowbongo: 61
+   ohighconga: 63
+   lowcongo: 64
+   lowtom: 45
+   hitom: 50
+   bong: 87 
+drumbeat:
+  bong: [ lowbongo, 1.0, 100 ]
+  bing: [ hibongo, 1.0, 80 ]
+  sbing: [ hibongo, 0.5, 80 ]
+drumpattern:
+  none: []
+  simple4: [ bong, bing, bing, bing ]
+  simple4b: [ bing, bong, bong, bong ]
+  simple5: [bong, sbing, sbing, bing]
+  jig0: [bong, bing, bing, bong, bing, bing]
+velocitypattern:
+  equal:
+    measure: 1
+    velocity: [1.0, 1.0, 1.0, 1.0]
+  4/4-stress1:
+    measure: 1
+    velocity: [1.0, 0.8, 0.8, 0.8]
+  4/4-stress2:
+    measure: 1
+    velocity: [1.0, 0.8, 0.9, 0.8]  
+  4/4-offbeat:
+    measure: 1
+    velocity: [0.8, 1.0, 0.8, 1.0]  
+  6/8-jig:
+    measure: 1
+    velocity: [1.0, 0.6,0.8,0.9,0.6,0.8]
+    
+swingpattern:
+  equal:
+    measure: 1
+    delta: [0.0]
+  6/8-jig:
+    measure: 1
+    delta: [ 0.0, -0.1,  0.0, 0.0, -0.1 ]
+  4/4-reel:
+    measure: 1
+    delta: [ 0.0, -0.1,  0.0, -0.1 ]
+chordpattern:
+   stroke4:
+     measure:  1
+     duration: [ 1, 1, 1, 1 ]
+     velocity: [ 100, 80, 80, 80 ]
+   stroke8:
+     measure:  1
+     duration: [ 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5 ]
+     velocity: [ 100, 50,   80,  50,  80,  50,  80,  50 ]
+  

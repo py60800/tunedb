@@ -1,0 +1,14 @@
+---
+helpers:
+  Mus4:    "c:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe"
+  Python:   "${HOME}/AppData/Local/Microsoft/WindowsApps/python3.exe"
+  MusEdit:   ${Mus4} ${File}
+  Abc2XmlPy: ./context/abc2xml.py
+  MusStyle1: ./context/svg.mss
+  TmpDir:    ./tmp
+  Audacity:  "audacity ${Mp3File}"
+  Mscz2Xml:  "${Mus4} ${File} -f -o ${XmlFile}"
+  Mscz2Img:  "${Mus4} ${File} -T 5 -S ${MusStyle1} -o ${ImgFile}"
+  Abc2Xml:   "${Python} ${Abc2XmlPy} -b -o ${XmlDir} ${AbcFile}"
+  Abc2Img:   "${Abc2Ps} ${AbcFile} -g -O ${ImgFile}"
+  MidiPort:  Wavetable
