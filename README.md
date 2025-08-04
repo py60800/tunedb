@@ -1,5 +1,5 @@
-# tunedb
-tunedb is a desktop application  intended  initially to manage my own collection of Irish tunes (Those I play or I want to learn). The main features are :
+# TuneDB
+TuneDB is a desktop application  intended  initially to manage my own collection of Irish tunes (Those I play or I want to learn). The main features are :
 
 - Search engine
 - Score display
@@ -11,7 +11,7 @@ tunedb is a desktop application  intended  initially to manage my own collection
 - sets, lists creation
 - ...
     
-**Important:** As of now, tunedb only runs on a Linux desktop.  A Windows version could be considered if there is a demand for it but some help would be needed.
+**Important:** TuneDB has been developed primarily for a Linux Desktop and has been compiled and adapted for Windows. As of now, Windows version is distributed as source code. (Installation procedure is described [Here](https://github.com/py60800/tunedb/WINDOWS.md))
 
 Note that MP3 playing depends on your own collection MP3 files.
 
