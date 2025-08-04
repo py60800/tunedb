@@ -8,6 +8,7 @@ helpers:
   TmpDir:    ./tmp
   Audacity:  "audacity ${Mp3File}"
   Mscz2Xml:  "${Mus4} ${File} -f -o ${XmlFile}"
+  Xml2Mscz:  "${Mus4} ${XmlFile} -f -o ${MsczFile}"
   Mscz2Img:  "${Mus4} ${File} -T 5 -S ${MusStyle1} -o ${ImgFile}"
   Abc2Xml:   "${Python} ${Abc2XmlPy} -b -o ${XmlDir} ${AbcFile}"
   Abc2Img:   "${Abc2Ps} ${AbcFile} -g -O ${ImgFile}"
