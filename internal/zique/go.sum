@@ -1,5 +1,5 @@
-github.com/py60800/ZiqueDB/internal/util v0.0.0-20250803061324-c8cf7287e152 h1:LPPD+wnLPnDFN00a8OD+kKhqXGhzGVrfCIQAIkLBV6g=
-github.com/py60800/ZiqueDB/internal/util v0.0.0-20250803061324-c8cf7287e152/go.mod h1:JSWeqRC3b9BF0PDes+xUBITGsdo7pXs56pAqBJ/MtKM=
+github.com/py60800/tunedb/internal/util v0.0.0-20250804123008-48838e6d4baa h1:ZjoagDQIJIrBlcXz96CUAiSupIXyrEpg9czbYKkVl64=
+github.com/py60800/tunedb/internal/util v0.0.0-20250804123008-48838e6d4baa/go.mod h1:ZJNhEQUv+cjduV1CsP0SlBkjbrZu2rW70bbfoDQOSPI=
 gitlab.com/gomidi/midi/v2 v2.0.30 h1:RgRYbQeQSab5ZaP1lqRcCTnTSBQroE3CE6V9HgMmOAc=
 gitlab.com/gomidi/midi/v2 v2.0.30/go.mod h1:Y6IFFyABN415AYsFMPJb0/43TRIuVYDpGKp2gDYLTLI=
 google.golang.org/api v0.147.0 h1:Can3FaQo9LlVqxJCodNmeZW/ib3/qKAY3rFeXiHo5gc=
