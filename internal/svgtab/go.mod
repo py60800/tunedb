@@ -13,3 +13,5 @@ require (
 	github.com/antchfx/xpath v0.0.0-20170515025933-1f3266e77307 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/py60800/tunedb/internal/util => ../util
