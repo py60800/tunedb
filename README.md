@@ -93,4 +93,5 @@ Several databases can be created using the command:
     tunedb -d AlternateDirectory
 
 Creating alternate database is recommended to test TuneDB features.
-    
+
+The quck start manual is available [here](https://github.com/py60800/tunedb/blob/main/doc/Manual.pdf)

@@ -77,5 +77,5 @@ Run "tunedb.exe" from MSYS2/UCRT64 prompt.
 
 The launch of TuneDB can scripted to ease the launch from Windows native environment.
 
-
+A short manual is available [here](https://github.com/py60800/tunedb/blob/main/doc/Manual.pdf)
 
