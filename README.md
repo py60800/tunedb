@@ -38,7 +38,7 @@ Tunes are stored in musescore format (.mscz) and derived files are created for d
           
 Debian packages: libgtk-3-common, pipewire, rubberband-cli, libsqlite3-0
 
-## Installation
+## Installation (Linux) 
 
 An executable version for Debian is provided
 
@@ -52,13 +52,13 @@ Either :
 
 From an empty directory
 
-    git clone https://github.com/py60800/tunedb.git   
+    git clone https://github.com/py60800/tunedb.git
+    cd tunedb
     go build
 
+## Installation (Windows)
 
-Or :
-
-    go install github.com/py60800/tunedb@latest
+Installation procedure is described [Here](https://github.com/py60800/tunedb/blob/main/WINDOWS.md))
 
 ## Prepare your environnement before the first launch:
 
@@ -96,4 +96,3 @@ Several databases can be created using the command:
 
 Creating alternate database is recommended to test tunedb features.
     
-AuthTest
