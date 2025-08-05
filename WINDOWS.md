@@ -3,9 +3,21 @@
 ## Install MuseScore4
 MuseScore can be found [Here](https://musescore.org)
 
+MuseScore is expected to be found at "c:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe". 
+
+If not, "config.yml" will have to be updated after the first launch.
+
 ## Install Python 3
 Python can be installed from Microsoft repositories (search Python using Windows tool bar)
+
+
+Python is expected to be located at "${HOME}\\AppData\\Local\\Microsoft\\WindowsApps\\python3.exe"
+
+If not, "config.yml" will have to be updated after the first launch.
+
 Download required package for Python
+
+
    
     pip install pyparse
 
@@ -34,15 +46,35 @@ Set some GO environment variables:
     export CGO_ENABLED=1
     export GOBIN=~/bin
 
-Install the application :
+Build
 
-    go install github.com/py60800/tunedb@latest
+    git clone github.com/py60800/tunedb
+    cd tunedb
+    go build
     
-If the build succeeds, the application should be available in the ~/bin directory.
+It may be required to "go get" some module (check error messages)
+
+If the build succeeds, the application should be available as "tunedb.exe"i
+
+## Prepare your environnement before the first launch:
+
+**locate your MP3 files:**
+By default, tunedb will search for all MP3s in the folder ~/Music/mp3 (including subfolders).
+Additional local repositories can be added later using the Config menu.
+
+Note that usual MP3 tags are used to index MP3 files (Artist, Album, Title). Sample rates other than 48000 or 44100 Hz may not work.
+
+**Prepare the repository for your tunes:**
+
+The default structure is ~/Music/MuseScore/_TuneKind_/  with one subfolder per tune kind
+
+You can use the sample.zip (from the samples) to create your initial environment (unzip from ~/Music/MuseScore folder)
 
 ### Start the application
 
-type ~/bin/tunedb to start the application.
+run "tunedb.exe" from MSYS2/UCRT64 prompt.
+
+The launch of TuneDB can scripted to ease the launch from Windows native environment.
 
 
 

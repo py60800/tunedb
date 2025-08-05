@@ -74,7 +74,7 @@ The default structure is ~/Music/MuseScore/_TuneKind_/  with one subfolder per t
 
 You can use the sample.zip (from the samples) to create your initial environment (unzip from ~/Music/MuseScore folder)
 
-## Launch tunedb
+## Launch TuneDB
 
 A MIDI synthesizer must be available before the start of tunedb, it can be launched manually but it’s better to use a script. Here is an example that checks if the synthesizer is active and launch it if not:
 
@@ -88,11 +88,11 @@ A MIDI synthesizer must be available before the start of tunedb, it can be launc
 
 On the first run, tunedb will create a working directory to hold the database and some configurations files (that can be adapted to your needs).
 
-The default woorking directory is ~/Music/tunedb.
+The default woorking directory is ~/Music/TuneDb.
 
 Several databases can be created using the command:
 
     tunedb -d AlternateDirectory
 
-Creating alternate database is recommended to test tunedb features.
+Creating alternate database is recommended to test TuneDB features.
     
