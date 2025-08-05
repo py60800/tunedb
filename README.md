@@ -1,5 +1,5 @@
 # TuneDB
-TuneDB is a desktop application  intended  initially to manage my own collection of Irish tunes (Those I play or I want to learn). The main features are :
+TuneDB is a desktop application  intended  initially to manage my own collection of Irish tunes (Those I play and those I want to learn). The main features are :
 
 - Search engine
 - Score display
@@ -21,12 +21,12 @@ Note that MP3 playing depends on your own collection MP3 files.
 - sqlite3 database with gorm (ORM)
 - depends on an external midi synthesizer such as  fluidsynth
 - Intensive use of MuseScore4 is used for tune editing  and format conversion (=>musicxml, svg)[MuseScore](https://musescore.org/)
-- Use of abc2xml (and therefore on python3) for ABC import
+- Use of abc2xml (and therefore python3) for ABC import
 - Use of rubberband library for speed and pitch adjustment when playing mp3 [Rubberband](https://breakfastquay.com/rubberband/)
     
 Tunes are stored in musescore format (.mscz) and derived files are created for different purposes (play midi and display)
 
-## Prerequisites
+## Prerequisites (Linux)
     
 - Musescore4 (that can be downloaded as a portable app from [MuseScore](https://musescore.org/). It must be "installed" and made available via the PATH with the name MuseScore4
 - GTK3
@@ -40,9 +40,9 @@ Debian packages: libgtk-3-common, pipewire, rubberband-cli, libsqlite3-0
 
 ## Installation
 
-An executable version is available in the bin subdirectory.
+An executable version for Debian is provided
 
-From the source:
+Or build from the sources :
 
 Using go (version > 1.23.5) with CGO enabled
 
