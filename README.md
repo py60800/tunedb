@@ -36,7 +36,7 @@ Tunes are stored in musescore format (.mscz) and derived files are created for d
 - python3 (for ABC files import)
 - sqlite3 library
           
-Debian packages: libgtk-3-common, pipewire, rubberband-cli, libsqlite3-0
+Debian packages: libgtk-3-common, pipewire, rubberband-cli, libsqlite3-0, python3-pyparsing
 
 ## Installation (Linux) 
 
@@ -46,7 +46,7 @@ Or build from the sources :
 
 Using go (version > 1.23.5) with CGO enabled
 
-Development libraries (Debian: libgtk-3-dev librubberband-dev libasound2-dev libsqlite3-dev)
+Dowload development libraries (Debian: libgtk-3-dev librubberband-dev libasound2-dev libsqlite3-dev)
 
 From an empty directory
 
