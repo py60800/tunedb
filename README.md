@@ -48,8 +48,6 @@ Using go (version > 1.23.5) with CGO enabled
 
 Development libraries (Debian: libgtk-3-dev librubberband-dev libasound2-dev libsqlite3-dev)
 
-Either :
-
 From an empty directory
 
     git clone https://github.com/py60800/tunedb.git

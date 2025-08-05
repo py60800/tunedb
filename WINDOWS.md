@@ -4,7 +4,6 @@
 MuseScore can be found [Here](https://musescore.org)
 
 MuseScore is expected to be found at "c:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe". 
-
 If not, "config.yml" will have to be updated after the first launch.
 
 ## Install Python 3
@@ -12,17 +11,16 @@ Python can be installed from Microsoft repositories (search Python using Windows
 
 
 Python is expected to be located at "${HOME}\\AppData\\Local\\Microsoft\\WindowsApps\\python3.exe"
-
 If not, "config.yml" will have to be updated after the first launch.
 
 Download required package for Python
 
 
    
-    pip install pyparse
+    pip install pyparsing
 
 ## Install MSYS 2
-MSYS is available [MSYS 2](https://www.msys2.org/)
+MSYS is available here [MSYS 2](https://www.msys2.org/)
 
 Open MSYS UCRT64 terminal and 
 
@@ -51,10 +49,12 @@ Build
     git clone github.com/py60800/tunedb
     cd tunedb
     go build
-    
+ 
+ Source code can also be available as a zip from Github (visit [Github](https://github.com/py60800/tunedb))
+
 It may be required to "go get" some module (check error messages)
 
-If the build succeeds, the application should be available as "tunedb.exe"i
+When the build succeeds, the application is available as "tunedb.exe".
 
 ## Prepare your environnement before the first launch:
 
@@ -66,13 +66,14 @@ Note that usual MP3 tags are used to index MP3 files (Artist, Album, Title). Sam
 
 **Prepare the repository for your tunes:**
 
-The default structure is ~/Music/MuseScore/_TuneKind_/  with one subfolder per tune kind
+The default structure is $HOME/Music/MuseScore/_TuneKind_/  with one subfolder per tune kind
 
-You can use the sample.zip (from the samples) to create your initial environment (unzip from ~/Music/MuseScore folder)
+You can use the sample.zip (from the samples directory) to create your initial environment.
+Extract it to $HOME/Music/MuseScore folder)
 
 ### Start the application
 
-run "tunedb.exe" from MSYS2/UCRT64 prompt.
+Run "tunedb.exe" from MSYS2/UCRT64 prompt.
 
 The launch of TuneDB can scripted to ease the launch from Windows native environment.
 
