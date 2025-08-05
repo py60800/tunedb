@@ -29,7 +29,7 @@ var charHeight = 35.0
 func ReadXml(file string) *xml.Document {
 	doc, err := xml.ParseFile(file)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	return doc
 }

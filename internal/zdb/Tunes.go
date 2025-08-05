@@ -4,6 +4,7 @@ package zdb
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -388,46 +389,63 @@ var SortMethod = []string{
 }
 
 /*
-func TuneSort(tunes []DTuneReference, sortMethod string) {
-	var sorter func(i, j int) bool
-	switch sortMethod {
-	case "Practice Date":
-		sorter = func(i, j int) bool {
-			return tunes[i].LastRehearsal.Before(tunes[j].LastRehearsal)
-		}
-	case "Practice Date (Inv)":
-		sorter = func(i, j int) bool {
-			return tunes[i].LastRehearsal.After(tunes[j].LastRehearsal)
-		}
-	case "Date":
-		sorter = func(i, j int) bool {
-			return tunes[i].ID < tunes[j].ID
-		}
-	default:
-		fallthrough
-	case "Date (Inv)":
-		sorter = func(i, j int) bool {
-			return tunes[i].ID >= tunes[j].ID
-		}
-	case "Name (Inv)":
-		sorter = func(i, j int) bool {
-			return tunes[i].NiceName > tunes[j].NiceName
-		}
-	case "Name":
-		sorter = func(i, j int) bool {
-			return tunes[i].NiceName < tunes[j].NiceName
-		}
-	case "Random":
-		sorter = nil
+	func TuneSort(tunes []DTuneReference, sortMethod string) {
+		var sorter func(i, j int) bool
+		switch sortMethod {
+		case "Practice Date":
+			sorter = func(i, j int) bool {
+				return tunes[i].LastRehearsal.Before(tunes[j].LastRehearsal)
+			}
+		case "Practice Date (Inv)":
+			sorter = func(i, j int) bool {
+				return tunes[i].LastRehearsal.After(tunes[j].LastRehearsal)
+			}
+		case "Date":
+			sorter = func(i, j int) bool {
+				return tunes[i].ID < tunes[j].ID
+			}
+		default:
+			fallthrough
+		case "Date (Inv)":
+			sorter = func(i, j int) bool {
+				return tunes[i].ID >= tunes[j].ID
+			}
+		case "Name (Inv)":
+			sorter = func(i, j int) bool {
+				return tunes[i].NiceName > tunes[j].NiceName
+			}
+		case "Name":
+			sorter = func(i, j int) bool {
+				return tunes[i].NiceName < tunes[j].NiceName
+			}
+		case "Random":
+			sorter = nil
 
+		}
+		if sorter != nil {
+			sort.Slice(tunes, sorter)
+		} else {
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(tunes), func(i, j int) {
+				tunes[i], tunes[j] = tunes[j], tunes[i]
+			})
+		}
 	}
-	if sorter != nil {
-		sort.Slice(tunes, sorter)
-	} else {
-		rand.Seed(time.Now().UnixNano())
-		rand.Shuffle(len(tunes), func(i, j int) {
-			tunes[i], tunes[j] = tunes[j], tunes[i]
-		})
-	}
-}
 */
+func (db *TuneDB) TuneDelete(id int) {
+	tune := db.TuneGetByID(id)
+	if tune.ID == 0 {
+		return
+	}
+	db.cnx.Where("d_tune_id = ?", id).Delete(&TuneInSet{})
+	db.cnx.Where("d_tune_id = ?", id).Delete(&ExtLink{})
+	db.cnx.Where("d_tune_id = ?", id).Delete(&MP3TuneInSet{})
+	db.cnx.Where("d_tune_id = ?", id).Delete(&TuneListItem{})
+	db.cnx.Where("d_tune_id = ?", id).Delete(&CButton{})
+
+	db.cnx.Where("id = ?", id).Delete(&DTune{})
+
+	os.Remove(tune.File)
+	os.Remove(tune.Xml)
+	os.Remove(tune.Img)
+}

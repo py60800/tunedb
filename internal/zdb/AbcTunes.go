@@ -114,6 +114,9 @@ func Abc2Xml(abcFile string, dir string) (string, error) {
 		"AbcFile": abcFile,
 		"XmlDir":  dir,
 	})
+	if cmd == nil {
+		return "", fmt.Errorf("Command missing")
+	}
 	if err := cmd.Run(); err != nil {
 		return "", err
 	}
@@ -136,6 +139,9 @@ func Abc2Svg(abcFile string, dir string) string {
 		"AbcFile": abcFile,
 		"ImgFile": expectedResult,
 	})
+	if cmd == nil {
+		return ""
+	}
 	err := cmd.Run()
 	if err != nil {
 		util.WarnOnError(fmt.Errorf("Abc2Svg: %v %v %v\n", abcFile, err, cmd.Args))

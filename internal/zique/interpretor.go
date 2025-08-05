@@ -332,7 +332,7 @@ func (n MNote) Process(p *Player) {
 					t += rn.Duration
 				}
 				if t != int(n.Duration) {
-					panic(fmt.Sprintf("Invalid Roll length %v %v", t, n.Duration))
+					panic(fmt.Sprintf("Internal error =>Invalid Roll length %v %v", t, n.Duration))
 				}
 
 			}
@@ -372,7 +372,7 @@ func (d MTime) Process(p *Player) {
 	p.MeasLength = d.Beats * ((p.XmlDivisions * 4) / d.BeatType)
 	p.MeasLengthTick = (p.Beats * MasterDivisions * 4) / p.BeatType
 	if p.MeasLength != p.MeasLengthTick {
-		panic("Normlize raté")
+		panic("Internal Error => Failed to Normalize tempo")
 	}
 	p.ComputeVelocity()
 	p.ComputeSwingFactor()
@@ -620,11 +620,11 @@ func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 						case MDivision:
 							nd := d.Value
 							if nd > MasterDivisions {
-								panic("XML Divisions too large")
+								panic("Major error XML Divisions too large")
 							}
 							coeff = MasterDivisions / nd
 							if coeff*nd != MasterDivisions {
-								panic("Odd Divisions")
+								panic("Major error Divisions")
 							}
 							d.Value = MasterDivisions
 							p.Part[ip].Measures[im].Contents[ic].Elem.(MAttributes).Contents[ia].Elem = d
@@ -632,7 +632,7 @@ func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 					}
 				case MNote:
 					if coeff == 0 {
-						panic("Division unset")
+						panic("Missing division parameter")
 					}
 					v.Duration *= coeff
 					p.Part[ip].Measures[im].Contents[ic].Elem = v

@@ -79,7 +79,7 @@ func TuneDBNew() *TuneDB {
 	cnx, err := gorm.Open(sqlite.Open(DataBase), gormConfig)
 
 	if err != nil {
-		panic(fmt.Errorf("Open database : %v", err))
+		panic(fmt.Errorf("Failed to open or create database : %v", err))
 	}
 	tuneDB = &TuneDB{cnx: cnx}
 	tuneDB.SchemaUpdate()

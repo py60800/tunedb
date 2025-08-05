@@ -84,11 +84,12 @@ func AbcImport(abc string, direct bool) (string, error) {
 			} else {
 				targetRep, Kind := guessTarget(kind)
 				msczFile := path.Join(targetRep, base+".mscz")
-				cmd := util.H.MkCmd("Xml2Mscz", map[string]string{
+				if cmd := util.H.MkCmd("Xml2Mscz", map[string]string{
 					"XmlFile":  xmlFile,
 					"MsczFile": msczFile,
-				})
-				cmd.Run()
+				}); cmd != nil {
+					cmd.Run()
+				}
 				if _, ok := util.GetModificationDate(msczFile); ok {
 					tuneDB.MsczTuneSave(msczFile, Kind, time.Now())
 					return warning, nil

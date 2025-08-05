@@ -102,7 +102,8 @@ func configAnalysis(c *Config) Note2Button {
 		for ir, row := range layout {
 			for jr, button := range row {
 				if len(button) != 2 {
-					panic(fmt.Errorf("No Push pull for %v %v", ir, jr))
+					fmt.Printf ("Concertina configuration error => No Push pull for %v %v\n", ir, jr)
+					continue
 				}
 				pushNote := text2note(button[0])
 				pullNote := text2note(button[1])

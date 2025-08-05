@@ -64,7 +64,7 @@ func (m *Mp3Player) selectContext(sampleRate int) *oto.Context {
 	}
 	otoCtx, readyChan, err := oto.NewContext(op)
 	if err != nil {
-		panic(fmt.Sprintf("oto.NewContext failed: %v for SR:%v", err.Error(), sampleRate))
+		panic(fmt.Sprintf("Internal Error =>oto.NewContext failed: %v for SR:%v", err.Error(), sampleRate))
 	}
 
 	fmt.Println("Oto context created for samplerate: ", sampleRate)

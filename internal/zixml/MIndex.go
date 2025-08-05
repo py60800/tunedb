@@ -37,7 +37,8 @@ func MIndex(m *MMeasure, Divisor int, FirstNote int) (int, []int) {
 		r[i] = tn[i*length/Divisor] - FirstNote
 	}
 	if tick != len(tn) {
-		panic("M length")
+		fmt.Println("Internal Error Mindex")
+		return 0, r
 	}
 	return FirstNote, r
 

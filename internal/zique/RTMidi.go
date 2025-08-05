@@ -52,13 +52,13 @@ func GetMidiSink(midiPort string) func(rtmidi.Message) error {
 		fmt.Println("-", p)
 	}
 	if len(Ports) == 0 {
-		panic("A midi port is required")
+		panic("Major failure => No MIDI device")
 	}
 	if out, err := rtmidi.FindOutPort(midiPort); err == nil {
 		fmt.Println("Got synth")
 		send, err := rtmidi.SendTo(out)
 		if err != nil {
-			panic("Can't connect to midi port")
+			panic("Can't connect to MIDI port")
 		}
 		return send
 	} else {

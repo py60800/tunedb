@@ -387,6 +387,18 @@ func (c *ZContext) MkTuneCtx() (*TuneCtx, gtk.IWidget) {
 
 	info := MkTuneInfo(c)
 	g.Attach(info, 0, is, 3, 1)
+	deleteTune := MkButton("Delete", func() {
+		tune := ActiveTune()
+		if tune != nil {
+			if MessageConfirm("WARNING : Deleting the tune with delete all related files and references!\n Are you sure ?\n") {
+				if MessageConfirm(fmt.Sprintf("Please confirm tune delete of %v", tune.Title)) {
+					tc.context.DB.TuneDelete(tune.ID)
+					tc.context.TUpdate()
+				}
+			}
+		}
+	})
+	g.Attach(deleteTune, 3, is, 2, 1)
 	is++
 
 	tc.tuneHide, _ = gtk.CheckButtonNewWithLabel("Hide this tune")

@@ -24,7 +24,7 @@ func ReadConfig[T any](fileName string, defaultContent string) T {
 	if stat, err := os.Stat(fileName); err != nil || stat.Size() == 0 {
 		f, err := os.Create(fileName)
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("Failed to read :%v (%v)", fileName, err))
 		}
 		f.WriteString(defaultContent)
 		f.Close()
@@ -33,13 +33,13 @@ func ReadConfig[T any](fileName string, defaultContent string) T {
 	// read config
 	data, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("Failed to read :%v (%v)", fileName, err))
 	}
 
 	var config T
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("Failed to read (Syntax error) :%v (%v)", fileName, err))
 	}
 	return config
 }
@@ -87,13 +87,14 @@ func (h *Helper) Get(name string) string {
 	if s, ok := h.currEnv[name]; ok {
 		return h.replace(s, map[string]string{})
 	}
-	panic(fmt.Sprintf("Env lookup failed", name))
+	fmt.Printf("Environnement lookup error : % v\n", name)
 	return ""
 }
 func (h *Helper) MkCmd(cmd string, params map[string]string) *exec.Cmd {
 	base, ok := h.currEnv[cmd]
 	if !ok {
-		panic("Helper MkCmd:" + cmd)
+		fmt.Printf("Failed to create command : %v\n", cmd)
+		return nil
 	}
 	sp := strings.Fields(base)
 	cmdArgs := make([]string, 0)
@@ -112,11 +113,11 @@ func MkSubDirs(dir string) (string, string) {
 	for _, dir := range []string{xmlDir, imgDir} {
 		if stat, err := os.Stat(dir); err != nil {
 			if err = os.Mkdir(dir, 0777); err != nil {
-				panic(fmt.Sprintf("MkDir %v %v", dir, err))
+				panic(fmt.Sprintf("Failed to create directory %v %v", dir, err))
 			}
 		} else {
 			if !stat.IsDir() {
-				panic(fmt.Sprintf("%v Not a directory", dir))
+				panic(fmt.Sprintf("%v Is not a directory", dir))
 			}
 		}
 	}

@@ -106,7 +106,7 @@ func (m *Mp3PlayWidget) markerSet(b *gtk.Button) {
 		}
 	default:
 		if l < 3 {
-			panic("logic error")
+			panic("Marker logic error => Report error")
 		}
 		if m.Position >= m.Markers[idx-1].Location && m.Position <= m.Markers[idx+1].Location {
 			m.Markers[idx].Location = m.Position
@@ -123,11 +123,11 @@ func (m *Mp3PlayWidget) markerUpdate() {
 		var label string
 		switch i {
 		case 0:
-			label = "Set start"
+			label = "...[1"
 		case len(m.Markers) - 1:
-			label = "Set end"
+			label = fmt.Sprintf("%d]...", len(m.Markers)-1)
 		default:
-			label = fmt.Sprintf("Set %v>%v", i, i+1)
+			label = fmt.Sprintf("%v][%v", i, i+1)
 		}
 		mrk.button.SetLabel(label)
 		m.markerBox.Attach(mrk.button, 2*i, 0, 2, 1)
@@ -222,7 +222,11 @@ func (m *Mp3PlayWidget) play(from, to float64, mode int) {
 	}
 	m.prevPos = 36000.0
 	duration := m.Player().Duration()
+
 	m.setDuration(duration)
+	if to < 0 {
+		to = duration
+	}
 	m.Player().Play(from, to, mode)
 	m.startTickCallBack(mode, from, to, duration)
 }
@@ -295,9 +299,9 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 		grid.Attach(w, iw, is, width, 1)
 		iw += width
 	}
-
+	// Plain play
 	play := MkButtonIcon("media-playback-start", func() {
-		m.play(m.From, m.To, player.PMPlayOnce)
+		m.play(0.0, -1.0, player.PMPlayOnce)
 
 	})
 	pgrid(play, 1)
@@ -306,16 +310,15 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 		if m.hide != nil {
 			m.hide()
 			DelayedAction(m.frame, 1*time.Second, func() {
-				m.play(m.From, m.To, player.PMPlayRepeat)
+				m.play(0.0, -1.0, player.PMPlayRepeat)
 
 			})
 		} else {
-			m.play(m.From, m.To, player.PMPlayRepeat)
+			m.play(0.0, -1.0, player.PMPlayRepeat)
 
 		}
 	})
 	pgrid(repeat, 1)
-	//	stop := MkButton("Stop", func() {
 	stop := MkButtonIcon("media-playback-stop", func() {
 		m.Player().Stop()
 	})
@@ -384,6 +387,33 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 	})
 	grid.Attach(m.cursor, 0, is, 8, 1)
 	is++
+
+	// Partial playing
+	iw = 0
+	pPLabel := MkLabel("Selection")
+	pgrid(pPLabel, 1)
+	pPplay := MkButtonIcon("media-playback-start", func() {
+		m.play(m.From, m.To, player.PMPlayOnce)
+	})
+	pgrid(pPplay, 1)
+
+	pPrepeat := MkButtonIcon("media-playlist-repeat", func() {
+		if m.hide != nil {
+			m.hide()
+			DelayedAction(m.frame, 1*time.Second, func() {
+				m.play(m.From, m.To, player.PMPlayRepeat)
+
+			})
+		} else {
+			m.play(m.From, m.To, player.PMPlayRepeat)
+		}
+	})
+	pgrid(pPrepeat, 1)
+	pPstop := MkButtonIcon("media-playback-stop", func() {
+		m.Player().Stop()
+	})
+	pgrid(pPstop, 1)
+
 	// To From Button
 	bFrom := MkButton("From", func() {
 		m.From = m.Position
@@ -393,6 +423,8 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 	m.adjTo, _ = gtk.AdjustmentNew(0.0, 0.0, 100.0, 0.1, 1.0, 0)
 	m.from, _ = gtk.SpinButtonNew(m.adjFrom, 0.1, 1)
 	m.from.SetSensitive(false)
+	pgrid(bFrom, 1)
+	pgrid(m.from, 1)
 	bTo := MkButton("To", func() {
 		m.To = m.Position
 		m.to.SetValue(fRound(m.To))
@@ -407,18 +439,17 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 	m.to.Connect("value-changed", func(sb *gtk.SpinButton) {
 		m.To = sb.GetValue()
 	})
+	pgrid(bTo, 1)
+	pgrid(m.to, 1)
+
+	is++
+	// Markers
 	if signalMarkerChange != nil {
 		m.markerBox, _ = gtk.GridNew()
 		grid.Attach(m.markerBox, 0, is, 8, 1)
 		is++
 		m.signalMarkerChange = signalMarkerChange
 	}
-	grid.Attach(bFrom, 0, is, 2, 1)
-	grid.Attach(m.from, 2, is, 2, 1)
-	grid.Attach(bTo, 4, is, 2, 1)
-	grid.Attach(m.to, 6, is, 2, 1)
-
-	is++
 
 	return m, m.frame
 }

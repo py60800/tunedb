@@ -12,7 +12,8 @@ import (
 func ReadXml(file string) *xml.Document {
 	doc, err := xml.ParseFile(file)
 	if err != nil {
-		panic(err)
+		fmt.Println("Read Xml:", err)
+		return nil
 	}
 	return doc
 }
@@ -30,6 +31,9 @@ func svgPatch(file string) string {
 		return ""
 	}
 	doc := ReadXml(file)
+	if doc == nil {
+		return ""
+	}
 	svg := doc.Root
 
 	Hs := svg.GetAttributeValue("height")

@@ -21,12 +21,16 @@ func (f *MP3File) ToString() string {
 }
 func MuseEdit(file string) {
 	cmd := util.H.MkCmd("MusEdit", map[string]string{"File": file})
-	cmd.Start()
+	if cmd != nil {
+		cmd.Start()
+	}
 }
 func LaunchAudacity(file string) {
 	if file != "" {
 		cmd := util.H.MkCmd("Audacity", map[string]string{"Mp3File": file})
-		cmd.Start()
+		if cmd != nil {
+			cmd.Start()
+		}
 	}
 }
 
@@ -35,6 +39,9 @@ func (t *DTune) MsczRefreshImg() {
 	base := strings.TrimSuffix(path.Base(t.File), ".mscz")
 	imgFile := path.Join(path.Dir(t.Img), base+".svg")
 	cmd := util.H.MkCmd("Mscz2Img", map[string]string{"ImgFile": imgFile, "File": t.File})
+	if cmd == nil {
+		return
+	}
 	if err := cmd.Run(); err != nil {
 		fmt.Println("Refresh Img:", err)
 	}
@@ -55,6 +62,9 @@ func (t *DTune) MsczRefreshImg() {
 func (t *DTune) MsczRefreshXml() {
 	start := time.Now().Add(-2 * time.Second)
 	cmd := util.H.MkCmd("Mscz2Xml", map[string]string{"File": t.File, "XmlFile": t.Xml})
+	if cmd == nil {
+		return
+	}
 	if err := cmd.Run(); err != nil {
 		fmt.Println("MsczXml Failed:", err)
 	}

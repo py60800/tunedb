@@ -275,7 +275,7 @@ func (wl *WListStore) insert(pos *gtk.TreeIter, data map[string]any) {
 				fmt.Printf("Error: %v %T\n", err, c)
 			}
 		} else {
-			panic(fmt.Sprintf("Unknown column: %v %v", k, c))
+			panic(fmt.Sprintf("Internal error : Unknown column: %v %v", k, c))
 		}
 	}
 	wl.sel.SelectIter(pos)
