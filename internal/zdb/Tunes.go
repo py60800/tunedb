@@ -229,6 +229,13 @@ type TuneFile struct {
 	FileDate time.Time
 }
 
+func (db *TuneDB) TuneGetAll() []DTune {
+	var tunes []DTune
+	r := db.cnx.Find(&tunes)
+	warnOnDbError(r)
+	return tunes
+}
+
 func (db *TuneDB) TunesGetFileList() []TuneFile {
 	var tunes []TuneFile
 	r := db.cnx.Model(&DTune{}).Scan(&tunes)

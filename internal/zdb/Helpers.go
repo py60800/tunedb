@@ -14,7 +14,27 @@ import (
 
 	"github.com/mozillazg/go-unidecode"
 	"gorm.io/gorm"
+
+	"os/exec"
 )
+
+var RequiredHelpers = []string{"Mus4", "Python"}
+
+func CheckHelpers() (string, error) {
+	res := ""
+
+	for _, h := range RequiredHelpers {
+		exe := util.H.Get(h)
+		if _, err := exec.LookPath(exe); err != nil {
+			res += fmt.Sprintf(" Not found : %v\n", exe)
+		}
+	}
+	if res != "" {
+		res += "Please fix required element in \"config.yml\""
+		return res, fmt.Errorf("Missing required helper")
+	}
+	return "", nil
+}
 
 func (f *MP3File) ToString() string {
 	return util.STruncate(fmt.Sprintf("%s : %s", f.Artist, f.Title), 70)

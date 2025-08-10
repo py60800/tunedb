@@ -178,7 +178,7 @@ func (m *Mixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 }
 
 type MMeasure struct {
-	Id       int     `xml:"number,attr"`
+	Id       string  `xml:"number,attr"`
 	Contents []Mixed `xml:",any"`
 }
 
@@ -253,6 +253,8 @@ type MNote struct {
 	Dot       xml.Name   `xml:"dot"`
 	TimeMod   MTimeMod   `xml:"time-modification`
 	Notations MNotations `xml:"notations"`
+	// Tied      string     `xml:"tied>type,attr"`
+	Tied string
 }
 
 func (n *MNote) IsRest() bool {
@@ -266,9 +268,13 @@ type MTimeMod struct {
 	Actual int `xml:"actual-notes"`
 	Normal int `xml:"normal-notes"`
 }
+type MTied struct {
+	Type string `xml:"type,attr"`
+}
 type MNotations struct {
 	Tuplet       MTuplet  `xml:"tuplet"`
 	StrongAccent xml.Name `xml:"articulations>strong-accent"`
+	Tied         MTied    `xml:"tied"`
 }
 type MTuplet struct {
 }
@@ -307,7 +313,10 @@ func Parse(fileName string) (MPartition, error) {
 		return partition, err
 	}
 	byteValue, _ := ioutil.ReadAll(xmlFile)
-	xml.Unmarshal(byteValue, &partition)
+	err = xml.Unmarshal(byteValue, &partition)
+	if err != nil {
+		fmt.Println("Parsing error:", err)
+	}
 	partition.NormalizeDivisions(MasterDivisions)
 	return partition, nil
 

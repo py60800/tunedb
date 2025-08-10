@@ -6,7 +6,7 @@ import (
 )
 
 type MStart struct {
-	MeasureId int
+	MeasureId string
 }
 type MTimeEv struct {
 	MLength  int

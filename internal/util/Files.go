@@ -2,7 +2,9 @@
 package util
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"runtime"
@@ -76,4 +78,29 @@ func GetFileListR(dir string, extension string, recursive bool) []string {
 		}
 	}
 	return res
+}
+func CopyFile(src, dst string) error {
+	srcfile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcfile.Close()
+
+	info, err := srcfile.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return errors.New("cannot read from directories")
+	}
+
+	// create new file, truncate if exists and apply same permissions as the original one
+	dstfile, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE|os.O_TRUNC, info.Mode().Perm())
+	if err != nil {
+		return err
+	}
+	defer dstfile.Close()
+
+	_, err = io.Copy(dstfile, srcfile)
+	return err
 }

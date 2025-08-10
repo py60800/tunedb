@@ -1,7 +1,6 @@
 ---
 helpers:
   Mus4:    MuseScore4
-  Abc2Ps:    abcm2ps
   MusEdit:   ${Mus4} ${File}
   Abc2XmlPy: ./context/abc2xml.py
   MusStyle1: ./context/svg.mss

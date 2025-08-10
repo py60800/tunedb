@@ -62,7 +62,11 @@ func (pm *MidiPlayCtrl) Stop() {
 func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm := &MidiPlayCtrl{}
 	pm.context = c
-	pm.Zique = zique.ZiquePlayerNew(ConfigBase, util.H.Get("MidiPort"))
+	var msg string
+	pm.Zique, msg = zique.ZiquePlayerNew(ConfigBase, util.H.Get("MidiPort"))
+	if msg != "" {
+		WarnOnStart(msg)
+	}
 
 	pm.menuButton, _ = gtk.MenuButtonNew()
 	pm.menuButton.SetLabel("Midi Ctrl...")
@@ -246,7 +250,6 @@ type WMetronome struct {
 	Metronome *gtk.DrawingArea
 	TickCount int
 	TickStep  int
-	MetroTick chan TickEvent
 
 	ticking bool
 
@@ -254,7 +257,7 @@ type WMetronome struct {
 	nextEvent    int
 
 	PassCount int
-	MeasureId int
+	MeasureId string
 }
 
 func (c *WMetronome) Ticker() {
@@ -288,7 +291,7 @@ func (c *WMetronome) Ticker() {
 		}
 		count := tick.Beats
 		now := time.Now()
-		for i := 0; i < count; i++ {
+		for i := 0; i < count*2; i++ {
 			tickN := i + 1
 			c.pendingEvent = append(c.pendingEvent, TickEvent{
 				date:      now.Add(time.Duration(tickN)*delay - prev),
@@ -296,13 +299,20 @@ func (c *WMetronome) Ticker() {
 				TickCount: count,
 			})
 		}
+		cancelTime := now.Add(time.Second)
+		if len(c.pendingEvent) > 0 {
+			cancelTime = c.pendingEvent[len(c.pendingEvent)-1].date.Add(time.Second)
+		}
 		c.pendingEvent = append(c.pendingEvent, TickEvent{
-			date:      now.Add(time.Duration(3 * time.Second)),
+			date:      cancelTime,
 			TickStep:  0,
 			TickCount: 0,
 		})
 
 		c.nextEvent = 0
+		// Force start
+		c.TickStep = 0
+		c.Metronome.QueueDraw()
 	default:
 	}
 	if c.nextEvent < len(c.pendingEvent) && time.Now().After(c.pendingEvent[c.nextEvent].date) {

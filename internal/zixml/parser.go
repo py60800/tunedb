@@ -257,6 +257,7 @@ type MNote struct {
 	Dot       xml.Name   `xml:"dot"`
 	TimeMod   MTimeMod   `xml:"time-modification`
 	Notations MNotations `xml:"notations"`
+	Tie       string     `xml:"tie,attr"`
 }
 
 func (n *MNote) IsRest() bool {

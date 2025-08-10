@@ -100,13 +100,13 @@ func (node *Node) search(word []rune) []int {
 }
 func (node *Node) Search(what string) []int {
 	words := nodeSplit(what)
-	fmt.Println(words)
+	//fmt.Println(words)
 	lst := make(map[int]int)
 	for i, w := range words {
 		l := node.search([]rune(w))
 		//sort.Ints(l)
 
-		fmt.Println(w, ":", len(l), l[:min(10, len(l))])
+		//fmt.Println(w, ":", len(l), l[:min(10, len(l))])
 		if i == 0 {
 			for _, n := range l {
 				lst[n] = 1
@@ -118,7 +118,7 @@ func (node *Node) Search(what string) []int {
 				}
 			}
 		}
-		fmt.Println(lst)
+		//fmt.Println(lst)
 	}
 	l := make([]int, 0)
 	for k, v := range lst {

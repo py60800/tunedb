@@ -70,17 +70,17 @@ type ZiquePlayer struct {
 	RtFeedBack      chan RtMeasureTick
 }
 
-func ZiquePlayerNew(context string, midiPort string) *ZiquePlayer {
+func ZiquePlayerNew(context string, midiPort string) (*ZiquePlayer, string) {
 	z := ZiquePlayer{
 		ZiqueCtrl: make(chan interface{}, 10),
 		FeedBack:  make(chan string, 2),
 		TickBack:  make(chan Tick, 2),
 	}
-	z.init(context, midiPort)
-	return &z
+	msg := z.init(context, midiPort)
+	return &z, msg
 }
 
-func (z *ZiquePlayer) init(context string, midiPort string) {
+func (z *ZiquePlayer) init(context string, midiPort string) string {
 
 	InitPattern(context)
 	if midiPort == "" {
@@ -90,13 +90,16 @@ func (z *ZiquePlayer) init(context string, midiPort string) {
 	RtMidiChan = make(chan SeqEvent, 3)
 	RtCtrlChan = make(chan int, 3)
 	RtMidiSinkChan = make(chan []byte, 0)
+	RtStartMsg := make(chan string)
 
 	z.RtFeedBack = make(chan RtMeasureTick, 2)
 
-	go RtMidiSink(midiPort, RtMidiSinkChan)
+	go RtMidiSink(midiPort, RtMidiSinkChan, RtStartMsg)
 	go MidiSink(RtMidiChan, RtCtrlChan, RtMidiSinkChan, z.RtFeedBack)
 
 	go z.mainLoop(z.ZiqueCtrl)
+	msg := <-RtStartMsg
+	return msg
 }
 func (z *ZiquePlayer) RtSend(evt PEvent) {
 	RtMidiSinkChan <- evt.GetRtMidiEvent()
@@ -185,7 +188,9 @@ func (z *ZiquePlayer) mainLoop(Cmd chan interface{}) {
 			default:
 			}
 			partition, err := Parse(t.File)
+			fmt.Println("Parse:", err, len(partition.Part))
 			if err != nil || len(partition.Part) == 0 {
+				fmt.Println(partition)
 				break
 			}
 			count := t.Count

@@ -39,8 +39,22 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 	b, _ := gtk.MenuButtonNew()
 	b.SetLabel("Info...")
 	popo, _ := gtk.PopoverNew(b)
+	grid, _ := gtk.GridNew()
+	popo.Add(grid)
 	entry, _ := gtk.TextViewNew()
-	popo.Add(entry)
+	grid.Attach(entry, 0, 0, 8, 8)
+	baseReloc := ""
+	needReloc := false
+	tuneId := 0
+	reloc := MkButton("Relocate", func() {
+		GetContext().DB.TuneRelocate(tuneId, baseReloc)
+		GetContext().tuneCtx.Refresh()
+	})
+	close := MkButton("Close", func() {
+		popo.Hide()
+	})
+	grid.Attach(reloc, 0, 9, 2, 1)
+	grid.Attach(close, 2, 9, 2, 1)
 	b.SetPopover(popo)
 	b.Connect("clicked", func() {
 
@@ -76,10 +90,14 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 			fmt.Fprintf(s, "Hide: %v\n", tune.Hide)
 
 			buffer.SetText(s.String())
+			tuneId = tune.ID
+			baseReloc, needReloc = GetContext().DB.TuneNeedsReloc(tune.File, tune.Kind)
+			reloc.SetSensitive(needReloc)
 		} else {
 			buffer.SetText("No tune!")
 		}
-		entry.Show()
+		grid.ShowAll()
+		popo.Show()
 
 	})
 	return b

@@ -23,7 +23,9 @@ func guessTarget(kind string) (string, string) {
 	} // should not happen
 	defaultR := repo[0].Location
 	for _, r := range repo {
-
+		if r.Type != "Mscz" {
+			continue
+		}
 		rk := strings.ReplaceAll(strings.ToLower(r.DefaultKind), " ", "")
 		if rk == kind {
 			return r.Location, r.DefaultKind

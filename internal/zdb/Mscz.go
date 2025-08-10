@@ -102,6 +102,8 @@ func (db *TuneDB) MsczContentUpdate() {
 
 		if _, ok := GetModificationDate(repo.Location); !ok {
 			os.MkdirAll(repo.Location, 0777) // Create dir any way
+			os.Mkdir(path.Join(repo.Location, "xml"), 0777)
+			os.Mkdir(path.Join(repo.Location, "img"), 0777)
 			fmt.Println("Directory not found:", repo.Location)
 			continue
 		}
@@ -139,4 +141,91 @@ func (db *TuneDB) PurgeMscz() {
 	}
 	purge.Close()
 	fpurge.Close()
+}
+
+func (db *TuneDB) TuneImport(file string, kind string) string {
+	repo, k := guessTarget(kind)
+	dst := path.Join(repo, path.Base(file))
+	if !strings.HasSuffix(file, ".mscz") {
+		return "Wrong file type"
+	}
+	if _, ok := util.GetModificationDate(dst); ok {
+		return dst + "File exists!"
+	}
+	if err := util.CopyFile(file, dst); err != nil {
+		return "Failed to copy file"
+	}
+
+	db.MsczTuneSave(dst, k, time.Now())
+
+	return "Import OK"
+
+}
+func (db *TuneDB) TuneNeedsReloc_base(repo []SourceRepository, file string, kind string) (string, bool) {
+	dir := path.Dir(file)
+	aRepo := ""
+	for i := range repo {
+		if repo[i].Type != "Mscz" {
+			continue
+		}
+		if dir == repo[i].Location && repo[i].DefaultKind == kind {
+			return "", false
+		}
+		if repo[i].DefaultKind == kind && aRepo == "" {
+			aRepo = repo[i].Location
+		}
+	}
+	if aRepo != "" {
+		return aRepo, true
+	}
+	return "", false
+}
+
+func (db *TuneDB) TuneNeedsReloc(file string, kind string) (string, bool) {
+	repo := db.SourceRepositoryGetAll()
+	return db.TuneNeedsReloc_base(repo, file, kind)
+}
+
+func (db *TuneDB) TuneRelocate(id int, target string) error {
+	tune := db.TuneGetByID(id)
+	if tune.ID == 0 {
+		return fmt.Errorf("No tune")
+	}
+	newFile := path.Join(target, path.Base(tune.File))
+	if err := os.Rename(tune.File, newFile); err != nil {
+		return err
+	}
+	xmlTarget := path.Join(target, "xml")
+	imgTarget := path.Join(target, "img")
+	if _, err := os.Stat(xmlTarget); err != nil {
+		os.MkdirAll(xmlTarget, 0777)
+		os.MkdirAll(imgTarget, 0777)
+	}
+	r := db.cnx.Model(&tune).Update("file", newFile)
+	warnOnDbError(r)
+
+	newXml := path.Join(xmlTarget, path.Base(tune.Xml))
+	os.Rename(tune.Xml, newXml)
+	r = db.cnx.Model(&tune).Update("xml", newXml)
+	warnOnDbError(r)
+
+	newImg := path.Join(imgTarget, path.Base(tune.Img))
+	os.Rename(tune.Img, newImg)
+	r = db.cnx.Model(&tune).Update("img", newImg)
+	warnOnDbError(r)
+	return db.cnx.Error
+}
+func (db *TuneDB) MassRelocate(feedback chan string) {
+	tunes := db.TuneGetAll()
+	repo := db.SourceRepositoryGetAll()
+	for _, t := range tunes {
+		kloc, needsReloc := db.TuneNeedsReloc_base(repo, t.File, t.Kind)
+		if needsReloc && kloc != "" {
+			select {
+			case feedback <- t.File:
+			default:
+			}
+			db.TuneRelocate(t.ID, kloc)
+		}
+	}
 }

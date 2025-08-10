@@ -45,54 +45,58 @@ func (p PTempoChange) GetRtMidiEvent() []byte {
 	return []byte{}
 }
 
-func GetMidiSink(midiPort string) func(rtmidi.Message) error {
+func GetMidiSink(midiPort string) (func(rtmidi.Message) error, string) {
 	Ports := rtmidi.GetOutPorts()
 	fmt.Println("Available Midi Ports:")
 	for _, p := range Ports {
 		fmt.Println("-", p)
 	}
 	if len(Ports) == 0 {
-		panic("Major failure => No MIDI device")
+		fmt.Println("No Midi devices")
+		return nil, "Major failure => No MIDI device"
 	}
 	if out, err := rtmidi.FindOutPort(midiPort); err == nil {
 		fmt.Println("Got synth")
 		send, err := rtmidi.SendTo(out)
 		if err != nil {
-			panic("Can't connect to MIDI port")
+			fmt.Println("Midi connection error")
+			return nil, "Can't connect to MIDI port"
 		}
-		return send
+		return send, ""
 	} else {
 		// Try a fall back to last channel
 		for i := range Ports {
 			j := len(Ports) - 1 - i
 			send, err := rtmidi.SendTo(Ports[j])
 			if err == nil {
-				fmt.Println("Fallback to midi port:", Ports[j])
-				return send
+				fmt.Println("Can't connect to MIDI port:", midiPort)
+				return send, fmt.Sprint("Fallback to midi port:", Ports[j])
 			}
 		}
 	}
 	panic("Can't locate midi port")
 }
 
-func RtMidiSink(midiPort string, bChan chan []byte) {
+func RtMidiSink(midiPort string, bChan chan []byte, rt chan string) {
 	defer rtmidi.CloseDriver()
-	send := GetMidiSink(midiPort)
-
+	send, msg := GetMidiSink(midiPort)
+	rt <- msg
 	for {
 		data, ok := <-bChan
 		if !ok {
 			break
 		}
 		if len(data) > 0 {
-			send(data)
+			if send != nil {
+				send(data)
+			}
 		}
 	}
 }
 
 type RtMeasureTick struct {
 	Time      time.Duration
-	MeasureId int
+	MeasureId string
 }
 
 func MidiSink(mchan chan SeqEvent, ctrlChan chan int, sendChan chan []byte, feedBack chan RtMeasureTick) {

@@ -26,7 +26,7 @@ type Tick struct {
 	BeatType     int
 	XmlDivisions int
 	TickTime     time.Duration
-	MeasureId    int
+	MeasureId    string
 	PassCount    int
 }
 
@@ -310,6 +310,7 @@ func (h MHarmony) Process(p *Player) {
 
 func (n MNote) Process(p *Player) {
 	if !n.IsRest() && !MelodyOff {
+		//	fmt.Println("Tied:", n.Notations.Tied.Type)
 		doRoll := false
 		if PlayRoll && n.Notations.StrongAccent.Local == "strong-accent" {
 			rollPattern, ok := RollPattern[RPattern{n.Step, n.Alter, n.Type, n.Dot.Local == "dot"}]
@@ -342,10 +343,14 @@ func (n MNote) Process(p *Player) {
 				// Clock not changed
 			} else {
 				mn := p.KeyToInt(n.Step, n.Octave-1, n.Alter)
-				ev := PEvent(PNoteOn{mn, p.GetVelocity(int(p.Clock - p.MeasStart)), DefaultChannel})
-				p.PushEvent(SeqEvent{p.Clock, ev})
+				if n.Notations.Tied.Type != "stop" {
+					ev := PEvent(PNoteOn{mn, p.GetVelocity(int(p.Clock - p.MeasStart)), DefaultChannel})
+					p.PushEvent(SeqEvent{p.Clock, ev})
+				}
 				p.Clock += p.XmlDuration2MidiDuration(n.Duration)
-				p.PushEvent(SeqEvent{p.Clock - 1, PNoteOff{mn, DefaultChannel}})
+				if n.Notations.Tied.Type != "start" {
+					p.PushEvent(SeqEvent{p.Clock - 1, PNoteOff{mn, DefaultChannel}})
+				}
 			}
 		}
 
@@ -443,6 +448,7 @@ func (p *Player) ComputeTuneMeasureLength(fp MPart) int {
 }
 
 func (p *Player) PlayTune(fp MPart, barSignal int, callBack func()) int {
+	fmt.Println("Play:", len(fp.Measures))
 	if p.Clock == 0 {
 		p.PartInit(&fp)
 		p.TuneMeasureLength = p.ComputeTuneMeasureLength(fp)
@@ -480,6 +486,7 @@ func (p *Player) PlayTune(fp MPart, barSignal int, callBack func()) int {
 	iter := fp.CreateIterator()
 	RestartPoint := iter
 	Replay := false
+
 loop:
 	for {
 		select {
@@ -505,7 +512,10 @@ loop:
 
 			p.MeasSeq = append(p.MeasSeq, p.Clock)
 			p.MeasStart = p.Clock
-			p.PushEvent(SeqEvent{p.Clock, MStart{MeasureId: iter.CurrentMeasure().Id}})
+			if actualMeasureLength == p.TuneMeasureLength {
+				// avoid pickup
+				p.PushEvent(SeqEvent{p.Clock, MStart{MeasureId: iter.CurrentMeasure().Id}})
+			}
 			Replay = false
 		}
 

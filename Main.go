@@ -46,6 +46,8 @@ type ZContext struct {
 	printer        *imgprint.Printer
 	svgt           *svgtab.SvgTab
 	concertinaCtrl *ConcertinaCtrl
+
+	xchgCtrl *XchgCtrl
 }
 
 var ziqueContext ZContext
@@ -61,24 +63,28 @@ func ActiveTune() *zdb.DTune {
 	return ziqueContext.ActiveTune
 }
 
-func Message(msg string) {
-	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
-	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_CLOSE, msg)
-	d.Run()
-	d.Destroy()
+func (c *ZContext) ScanMp3() {
+	msgC := make(chan string)
+	go func() {
+		msgC <- "Mp3 scan"
+		zdb.MP3DBUpdate(c.DB)
+		c.mp3Collection = zdb.MP3CollectionNew(c.DB)
+		msgC <- ""
+	}()
+	OpWait("Please Wait", msgC)
+
 }
-func MessageConfirm(msg string) bool {
-	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
-	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_OK_CANCEL, msg)
-	r := d.Run()
-	d.Destroy()
-	return r == gtk.RESPONSE_OK
+func (c *ZContext) MassRelocate() {
+	msgC := make(chan string)
+	go func() {
+		msgC <- "Mass Relocate"
+		c.DB.MassRelocate(msgC)
+		msgC <- ""
+	}()
+	OpWait("Please Wait", msgC)
+
 }
 
-func (c *ZContext) ScanMp3() {
-	zdb.MP3DBUpdate(c.DB)
-	c.mp3Collection = zdb.MP3CollectionNew(c.DB)
-}
 func (c *ZContext) MkMenu() {
 	c.menu, _ = gtk.MenuBarNew()
 	appMenu, _ := gtk.MenuItemNewWithLabel("App")
@@ -98,6 +104,12 @@ func (c *ZContext) MkMenu() {
 
 	})
 	appMenuGroup.Append(fmMp3)
+	relocate, _ := gtk.MenuItemNewWithLabel("Relocate Tunes")
+	relocate.Connect("activate", func() {
+		c.MassRelocate()
+
+	})
+	appMenuGroup.Append(relocate)
 
 	/*	refreshAbc, _ := gtk.MenuItemNewWithLabel("Scan ABC Repositories")
 		refreshAbc.Connect("activate", func() { zdb.AbcDBUpdate(c.DB) })
@@ -199,7 +211,13 @@ func (c *ZContext) Refresh() {
 // Tune Context
 
 func (c *ZContext) TUpdate() {
-	c.DB.MsczContentUpdate()
+	msgC := make(chan string)
+	go func() {
+		msgC <- "Mscz update"
+		c.DB.MsczContentUpdate()
+		msgC <- ""
+	}()
+	OpWait("Please Wait", msgC)
 	c.Refresh()
 	c.tuneSelector.Refresh()
 	c.DB.PurgeMscz()
@@ -255,6 +273,7 @@ var previousAlloc *gtk.Allocation
 
 func (c *ZContext) RefreshTune() {
 	if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
+
 		if tune.FileType == zdb.FileTypeMscz {
 			date, _ := util.GetModificationDate(tune.File)
 			c.DB.MsczTuneSave(tune.File, "", date)
@@ -263,6 +282,19 @@ func (c *ZContext) RefreshTune() {
 		}
 	}
 }
+
+var StartupMessages []string
+
+func OnceCheck() {
+	for _, m := range StartupMessages {
+		Message(m)
+	}
+	StartupMessages = []string{}
+}
+func WarnOnStart(msg string) {
+	StartupMessages = append(StartupMessages, msg)
+}
+
 func (c *ZContext) MakeUI() {
 	var w gtk.IWidget
 
@@ -357,6 +389,10 @@ func (c *ZContext) MakeUI() {
 
 	c.abcImport, w = c.MkAbcImport()
 	leftColumn.Add(w)
+
+	c.xchgCtrl, w = c.MkXchgCtrl()
+	leftColumn.Add(w)
+
 	print := MkButton("Print...", func() {
 		if c.ActiveTune != nil && c.ActiveTune.ID != 0 {
 			file := c.ActiveTune.Img
@@ -398,6 +434,11 @@ func (c *ZContext) MakeUI() {
 	})
 	display, _ := gdk.DisplayGetDefault()
 	c.clip, _ = gtk.ClipboardGetForDisplay(display, gdk.SELECTION_CLIPBOARD)
+	c.win.AddTickCallback(func(widget *gtk.Widget, frameClock *gdk.FrameClock) bool {
+		OnceCheck()
+		return false
+	})
+
 }
 
 // ****************************************************************************
@@ -424,6 +465,10 @@ func main() {
 	c.MakeUI()
 	c.tuneSelector.Refresh()
 	c.printer = imgprint.PrinterNew()
+	if msg, err := zdb.CheckHelpers(); err != nil {
+		WarnOnStart(msg)
+	}
+
 	gtk.Main()
 
 }
