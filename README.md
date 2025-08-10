@@ -1,17 +1,19 @@
 # TuneDB
 TuneDB is a desktop application  intended  initially to manage my own collection of Irish tunes (Those I play and those I want to learn). The main features are :
 
-- Search engine
 - Score display
 - Tune annotation: (How you like it, how you play it, free comment...)
 - Midi playing
+- Local search engine
 - MP3 playing with speed and pitch adjustment
 - Tune editing (using MuseScore4 as a companion application)
 - Tune import in ABC format (typically from [“thesession.org”](https://thesession.org))
 - sets, lists creation
 - ...
     
-**Important:** TuneDB has been developed primarily for a Linux Desktop and has been compiled and adapted for Windows. As of now, Windows version is distributed as source code. (Installation procedure is described [Here](https://github.com/py60800/tunedb/blob/main/WINDOWS.md))
+**Important:** TuneDB has been developed primarily for a Linux Desktop and has been compiled and adapted for Windows. 
+
+Windows version is distributed as source code and will soon be available as binary. (Installation procedure is described [Here](https://github.com/py60800/tunedb/blob/main/WINDOWS.md))
 
 Note that MP3 playing depends on your own collection MP3 files.
 
@@ -40,11 +42,7 @@ Debian packages: libgtk-3-common, pipewire, rubberband-cli, libsqlite3-0, python
 
 ## Installation (Linux) 
 
-An executable version for Debian is provided
-
-Or build from the sources :
-
-Using go (version > 1.23.5) with CGO enabled
+For Linux TuneDb must be build from the sources
 
 Dowload development libraries (Debian: libgtk-3-dev librubberband-dev libasound2-dev libsqlite3-dev)
 
