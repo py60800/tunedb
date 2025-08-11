@@ -18,7 +18,7 @@ Linux users must build and install TuneDb from the source code (procedure descri
 Windows users can [download a prebuilt binary](Windows/TunedbWindows.zip) or [build it from the source](https://github.com/py60800/tunedb/blob/main/WINDOWS.md)
 
 
-** Note that MP3 playing depends on your own collection MP3 files. **
+**Note that MP3 playing depends on your own collection of MP3 files.**
 
 ## Technical details
    
