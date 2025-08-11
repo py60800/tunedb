@@ -15,7 +15,7 @@ import "C"
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"log"
 	"runtime"
 	"time"
 	"unsafe"
@@ -31,7 +31,7 @@ func NewRubberband(sampleRate int, channels int, timeRatio float64, pitchRatio f
 	options := C.RubberBandOptionProcessRealTime | C.RubberBandOptionDetectorCompound
 	rb.ptr = unsafe.Pointer(C.rubberband_new(C.uint(sampleRate), C.uint(channels), C.int(options), C.double(timeRatio), C.double(pitchRatio)))
 	rb.SampleRequired = int(C.rubberband_get_samples_required(C.native(rb.ptr)))
-	fmt.Println("Rubberband new")
+	log.Println("Rubberband new")
 	return &rb
 }
 func (rb *Rubberband) SetTimeRatio(timeRatio float64) {
@@ -47,9 +47,9 @@ var rbTime time.Duration
 func (rb *Rubberband) Delete() {
 	C.rubberband_delete(C.native(rb.ptr))
 	if rbCount > 0 {
-		fmt.Printf("Rubberband Delete: %d %v\n", rbCount, rbTime/time.Duration(rbCount))
+		log.Printf("Rubberband Delete: %d %v\n", rbCount, rbTime/time.Duration(rbCount))
 	} else {
-		fmt.Printf("Rubberband Delete: unused\n")
+		log.Printf("Rubberband Delete: unused\n")
 	}
 	rb.ptr = nil
 }
@@ -87,7 +87,7 @@ func (rb *Rubberband) ProcessI16(data []byte, channels int) []byte {
 	C.rubberband_process(C.native(rb.ptr), C.ptr(unsafe.Pointer(&(d[0]))), C.uint(sz), 0)
 	available := C.rubberband_available(C.native(rb.ptr))
 	if available == 0 {
-		fmt.Println("lazy rubberband")
+		log.Println("lazy rubberband")
 		return []byte{}
 	}
 

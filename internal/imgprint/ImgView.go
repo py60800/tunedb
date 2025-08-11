@@ -3,6 +3,7 @@ package imgprint
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/gdk"
@@ -49,7 +50,7 @@ func (p *Printer) draw(cr *cairo.Context, w, h float64) {
 
 	hdr, _ := p.header.GetText()
 	if len(hdr) > 0 {
-		fmt.Println(hdr)
+		log.Println("ImgPrint:" + hdr)
 	}
 	// Preserve ratio
 	W, H := float64(p.PixBuf.GetWidth()), float64(p.PixBuf.GetHeight())
@@ -62,12 +63,10 @@ func (p *Printer) draw(cr *cairo.Context, w, h float64) {
 
 	surf, err := gdk.CairoSurfaceCreateFromPixbuf(pb, 1, nil)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("ImgPrint:" + fmt.Sprint(err))
 	}
 	cr.SetSourceSurface(surf, (w-wt)/2, 0)
 	//
-	//center
-	//	fmt.Printf("Draw: target: %3.1f,%3.1f retained: %3.1f,%3.1f pixbuf: %v/%v\n", w, h, wt, ht, W, H)
 	cr.Rectangle((w-wt)/2, 0, wt, ht)
 	cr.Fill()
 
@@ -76,7 +75,7 @@ func (p *Printer) draw(cr *cairo.Context, w, h float64) {
 func (p *Printer) Draw(op *gtk.PrintOperation, pc *gtk.PrintContext, pn int) {
 
 	w, h := pc.GetWidth(), pc.GetHeight()
-	fmt.Printf("Draw Page %v %v/%v DPI:%v/%v PixBuf: %v/%v\n", pn, w, h, pc.GetDpiX(), pc.GetDpiY(), p.PixBuf.GetWidth(), p.PixBuf.GetHeight())
+	log.Printf("Draw Page %v %v/%v DPI:%v/%v PixBuf: %v/%v\n", pn, w, h, pc.GetDpiX(), pc.GetDpiY(), p.PixBuf.GetWidth(), p.PixBuf.GetHeight())
 	cr := pc.GetCairoContext()
 
 	p.draw(cr, w, h)
@@ -96,10 +95,10 @@ func (p *Printer) Print() {
 
 	po.SetNPages(1)
 	po.Connect("begin_print", func(op *gtk.PrintOperation, pc *gtk.PrintContext) {
-		fmt.Println("Start printing")
+		log.Println("ImgPrint:Start printing")
 	})
 	po.Connect("draw_page", func(op *gtk.PrintOperation, pc *gtk.PrintContext, pn int) {
-		fmt.Println("Print Page")
+		log.Println("ImgPrint:Print Page")
 		p.Draw(op, pc, pn)
 	})
 	po.Connect("end_print", func(op *gtk.PrintOperation, pc *gtk.PrintContext) {
@@ -112,7 +111,7 @@ func (p *Printer) Print() {
 	p.printSettings.ToFile("printSettings.txt")
 	p.setDefaultPrinter(p.printSettings.GetPrinter())
 
-	fmt.Println(res, err)
+	log.Println("ImgPrint:", res, err)
 }
 func (p *Printer) Quit() {
 	p.win.Hide()
@@ -120,7 +119,7 @@ func (p *Printer) Quit() {
 func (p *Printer) toA4() *gdk.Pixbuf {
 	W := 21 * 300 / 2.54
 	H := 29.7 * 300 / 2.54
-	fmt.Println("Img file Sz:", W, H)
+	log.Println("ImgPrint:Img file Sz:", W, H)
 	w := float64(p.PixBuf.GetWidth())
 	h := float64(p.PixBuf.GetHeight())
 	r := min(W/w, H/h)
@@ -144,22 +143,22 @@ func (p *Printer) HRPrint() {
 	cmd.Stdout = &out
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
-	fmt.Println("Start Printing")
+	log.Println("ImgPrint:Start Printing")
 	err := cmd.Start()
 	if err != nil {
-		fmt.Println(err)
+		log.Println("ImgPrint:", err)
 		return
 	} else {
-		fmt.Println("Start success")
+		log.Println("ImgPrint:Start success")
 	}
 
 	pb := p.toA4()
 	errw := pb.WriteJPEG(writer, 100)
 	writer.Close()
-	fmt.Println("Writing:", errw)
+	log.Println("ImgPrint:Writing:", errw)
 
 	cmd.Wait()
-	fmt.Println("Print Result:", out.String(), stderr.String())
+	log.Println("ImgPrint:Print Result:", out.String(), stderr.String())
 }
 func (p *Printer) PrintSettings() {
 	po, _ := gtk.PrintOperationNew()
@@ -199,18 +198,18 @@ func (p *Printer) SetImg(imgs []string) {
 		var err error
 		pixBuf[i], err = gdk.PixbufNewFromFile(f)
 		if err != nil {
-			fmt.Println(f, err)
+			log.Println("ImgPrint:", f, err)
 		}
-		fmt.Printf("File: %v Temp:%v W:%v H:%v \n", file, f, pixBuf[i].GetWidth(), pixBuf[i].GetHeight())
+		log.Printf("File: %v Temp:%v W:%v H:%v \n", file, f, pixBuf[i].GetWidth(), pixBuf[i].GetHeight())
 		w = max(w, pixBuf[i].GetWidth())
 		h += pixBuf[i].GetHeight()
 	}
-	fmt.Println("R Size:", w, h)
+	log.Println("ImgPrint:R Size:", w, h)
 	all, _ := gdk.PixbufNew(pixBuf[0].GetColorspace(), pixBuf[0].GetHasAlpha(),
 		pixBuf[0].GetBitsPerSample(), w, h)
 	y := 0
 	for _, p := range pixBuf {
-		fmt.Println("All:", all.GetWidth(), all.GetHeight(), "Part", p.GetWidth(), p.GetHeight(), "Y:", y)
+		log.Println("ImgPrint:All:", all.GetWidth(), all.GetHeight(), "Part", p.GetWidth(), p.GetHeight(), "Y:", y)
 		p.Composite(all, 0, y, p.GetWidth(), p.GetHeight(), 0, float64(y), 1.0, 1.0, gdk.INTERP_TILES, 255)
 		y += p.GetHeight()
 	}
@@ -290,9 +289,8 @@ func PrinterNew() *Printer {
 
 	p.MakeUI()
 
-	fmt.Println(p.printSettings.GetDefaultSource())
-	fmt.Println(p.printSettings.GetPrinter())
-	fmt.Println(p.printSettings.GetPrinterLpi())
+	log.Println("ImgPrint:" + p.printSettings.GetDefaultSource())
+	log.Println("ImgPrint:" + p.printSettings.GetPrinter())
 	p.pageSettings.PageSetupToFile("pageSetup.txt")
 
 	return &p

@@ -3,11 +3,13 @@ package zique
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/py60800/tunedb/internal/util"
 	"google.golang.org/api/iterator"
 )
 
@@ -333,7 +335,8 @@ func (n MNote) Process(p *Player) {
 					t += rn.Duration
 				}
 				if t != int(n.Duration) {
-					panic(fmt.Sprintf("Internal error =>Invalid Roll length %v %v", t, n.Duration))
+					err := fmt.Errorf("Internal error =>Invalid Roll length %v %v", t, n.Duration)
+					util.PanicOnError(err)
 				}
 
 			}
@@ -420,7 +423,7 @@ func (p *Player) processCmd(C CPlayCtrl) bool {
 		}
 		p.ComputeVelocity()
 	default:
-		fmt.Println("Unimplemented:", C)
+		log.Println("Unimplemented:", C)
 	}
 	return true
 }
@@ -448,7 +451,7 @@ func (p *Player) ComputeTuneMeasureLength(fp MPart) int {
 }
 
 func (p *Player) PlayTune(fp MPart, barSignal int, callBack func()) int {
-	fmt.Println("Play:", len(fp.Measures))
+	log.Println("MidiPlay:", len(fp.Measures))
 	if p.Clock == 0 {
 		p.PartInit(&fp)
 		p.TuneMeasureLength = p.ComputeTuneMeasureLength(fp)
@@ -464,9 +467,9 @@ func (p *Player) PlayTune(fp MPart, barSignal int, callBack func()) int {
 
 		switch {
 		case lastMeasDuration+FirstMeasLength == MeasureLength:
-			fmt.Printf("Raccord Type 1!! lm:%v, fm:%v, ml:%v\n", lastMeasDuration, FirstMeasLength, MeasureLength)
+			log.Printf("Raccord Type 1!! lm:%v, fm:%v, ml:%v\n", lastMeasDuration, FirstMeasLength, MeasureLength)
 		case lastMeasDuration == FirstMeasLength && FirstMeasLength == MeasureLength:
-			fmt.Printf("Raccord Type 2!! lm:%v, fm:%v, ml:%v\n", lastMeasDuration, FirstMeasLength, MeasureLength)
+			log.Printf("Raccord Type 2!! lm:%v, fm:%v, ml:%v\n", lastMeasDuration, FirstMeasLength, MeasureLength)
 		case lastMeasDuration+FirstMeasLength < MeasureLength:
 			// Transient Measure requires completion
 			delta := MeasureLength - (lastMeasDuration + FirstMeasLength)
@@ -474,9 +477,9 @@ func (p *Player) PlayTune(fp MPart, barSignal int, callBack func()) int {
 		case lastMeasDuration+FirstMeasLength > MeasureLength:
 			delta := (lastMeasDuration + FirstMeasLength) % MeasureLength
 			p.Clock -= uint32(delta)
-			fmt.Printf("Raccord Zarbi!! LastM:%v, FirstM:%v, MLength:%v (%v)\n", lastMeasDuration, FirstMeasLength, MeasureLength, delta)
+			log.Printf("Raccord Zarbi!! LastM:%v, FirstM:%v, MLength:%v (%v)\n", lastMeasDuration, FirstMeasLength, MeasureLength, delta)
 		default:
-			fmt.Println("Unexpected Measure config\n", lastMeasDuration, FirstMeasLength, MeasureLength)
+			log.Println("Unexpected Measure config\n", lastMeasDuration, FirstMeasLength, MeasureLength)
 
 		}
 
@@ -551,7 +554,6 @@ loop:
 					el, err := iter.Next()
 
 					if err != nil {
-						fmt.Println("No second pass")
 						break loop
 					}
 					switch v := el.Elem.(type) {
@@ -561,7 +563,7 @@ loop:
 						}
 					}
 				}
-				fmt.Println("end not found")
+				log.Println("end not found")
 			}
 		default:
 			//fmt.Println("Process ", el)

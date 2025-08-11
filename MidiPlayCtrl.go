@@ -156,7 +156,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	for k := range zique.PatternConfig.VelocityPattern {
 		pm.velocitySelector.AppendText(k)
 	}
-	fmt.Println("Velocity Pattern", zique.PatternConfig.VelocityPattern)
+	//fmt.Println("Velocity Pattern", zique.PatternConfig.VelocityPattern)
 	lVelocityBox.Add(pm.velocitySelector)
 
 	velocityCoeff, _ := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 3.0, 0.1)

@@ -3,6 +3,7 @@ package zixml
 
 import (
 	"fmt"
+	"log"
 )
 
 func INote(n *MNote) int {
@@ -37,7 +38,7 @@ func MIndex(m *MMeasure, Divisor int, FirstNote int) (int, []int) {
 		r[i] = tn[i*length/Divisor] - FirstNote
 	}
 	if tick != len(tn) {
-		fmt.Println("Internal Error Mindex")
+		log.Println("Internal Error Mindex")
 		return 0, r
 	}
 	return FirstNote, r
@@ -77,7 +78,7 @@ func ComputeIndex(p *MPartition) string {
 	case Beats == 12 && BeatType == 8:
 		Divisor = 4
 	default:
-		fmt.Printf("Unhandled time sig %d/%d", Beats, Beats)
+		log.Printf("Unhandled time sig %d/%d", Beats, Beats)
 		Divisor = Beats
 	}
 	FN, m0 := MIndex(&partition.Measures[iStart], Divisor, 0)

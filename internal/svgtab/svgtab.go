@@ -2,6 +2,7 @@ package svgtab
 
 import (
 	"fmt"
+	"log"
 
 	svgutil "github.com/hookttg/svgparser/utils"
 	xml "github.com/subchen/go-xmldom"
@@ -105,7 +106,6 @@ func dist(x, y float64) float64 {
 	return math.Sqrt(x*x + y*y)
 }
 func (s *SvgTab) Click(X, Y, W, H float64) {
-	fmt.Println("Click:", X, Y, W, H)
 	x, y := X/W, Y/H
 	ib := -1
 	dmax := 1.0
@@ -120,10 +120,10 @@ func (s *SvgTab) Click(X, Y, W, H float64) {
 		}
 	}
 	if ib < 0 || dmax > 0.1 {
-		fmt.Println("Not found:", ib, x, y, dmax)
+		//fmt.Println("Not found:", ib, x, y, dmax)
 		return
 	} else {
-		fmt.Println("Found ", ib, s.Dots[ib], dmax)
+		//fmt.Println("Found ", ib, s.Dots[ib], dmax)
 	}
 	btns := note2button[s.Notes[ib]]
 	s.Idx[ib] = (s.Idx[ib] + 1) % len(btns)
@@ -162,7 +162,7 @@ func SvgTabNew(context string, file string) *SvgTab {
 	dots := make([]Dot, 0, 150)
 	svgt.doc = ReadXml(file)
 	if svgt.doc == nil {
-		fmt.Println("SvgTab Can't read :", file)
+		log.Println("SvgTab Can't read :", file)
 		return nil
 	}
 	svg := svgt.doc.Root
@@ -198,7 +198,6 @@ func SvgTabNew(context string, file string) *SvgTab {
 				fmt.Sscanf(pts[1], "%f", &x1)
 			}
 			if i%5 == 4 {
-				fmt.Println(y, x0, x1)
 				Staves = append(Staves, Staff{y: sum / 5.0, x0: x0, x1: x1,
 					Y: sum / (5.0 * svgt.H), W: (y - y0) / svgt.H})
 				if staffWidth == 0.0 {
@@ -339,7 +338,7 @@ func (s *SvgTab) MsczCleanUp(mscz string) {
 // *********************************************************
 
 func SvgEnhance(file string) {
-	fmt.Println("SvgEnhance", file)
+	log.Println("SvgEnhance", file)
 	doc := ReadXml(file)
 	if doc == nil {
 		return

@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	//	"errors"
 	"fmt"
+	"log"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -172,7 +173,7 @@ func (m *Mixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		d.Skip()
 		return nil
 	default:
-		//fmt.Printf("unknown element!: %s\n", start)
+		log.Printf("Unmarshall unknown element!: %s\n", start)
 		m.Elem = nil
 		d.Skip()
 		return nil
@@ -216,7 +217,7 @@ func (m *AMixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		d.Skip()
 		return nil
 	default:
-		fmt.Printf("unknown element: %s\n", start)
+		log.Printf("unknown element: %s\n", start)
 		d.Skip()
 		return nil
 	}
@@ -299,7 +300,7 @@ func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 							if coeff*nd != MasterDivisions {
 								panic("Odd Divisions")
 							}
-							fmt.Printf("Div:%d\n", p.Part[ip].Measures[im].Contents[ic].Elem.(MAttributes).Contents[ia].Elem.(MDivision).Value)
+							log.Printf("Div:%d\n", p.Part[ip].Measures[im].Contents[ic].Elem.(MAttributes).Contents[ia].Elem.(MDivision).Value)
 							d.Value = MasterDivisions
 							p.Part[ip].Measures[im].Contents[ic].Elem.(MAttributes).Contents[ia].Elem = d
 						}
@@ -413,7 +414,7 @@ func Parse(fileName string) (MPartition, error) {
 	defer xmlFile.Close()
 
 	if err != nil {
-		fmt.Printf("Failed to read %v (%v)\n", fileName, err)
+		log.Printf("Failed to read %v (%v)\n", fileName, err)
 		return partition, err
 	}
 	byteValue, _ := ioutil.ReadAll(xmlFile)

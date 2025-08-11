@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 
 	"github.com/py60800/tunedb/internal/util"
 
@@ -103,7 +103,6 @@ func (c *ZContext) MkImage() (*TImage, *gtk.Widget) {
 	imgCtrl.Image.AddEvents(int(gdk.BUTTON_PRESS_MASK | gdk.BUTTON_MOTION_MASK | gdk.BUTTON_RELEASE_MASK))
 	imgCtrl.Image.Connect("button-press-event", func(da *gtk.DrawingArea, ev *gdk.Event) bool {
 		evb := gdk.EventButtonNewFromEvent(ev)
-		fmt.Println("Evt:", evb.Type(), evb.X(), evb.Y())
 		imgCtrl.ButtonPress = true
 		imgCtrl.X0 = evb.X()
 		imgCtrl.X1 = imgCtrl.X0
@@ -121,9 +120,7 @@ func (c *ZContext) MkImage() (*TImage, *gtk.Widget) {
 		return false
 	})
 	imgCtrl.Image.Connect("button-release-event", func(da *gtk.DrawingArea, ev *gdk.Event) bool {
-		evb := gdk.EventButtonNewFromEvent(ev)
-		fmt.Println("Evt:", evb.Type(), evb.X(), evb.Y(), evb.Button())
-
+		//evb := gdk.EventButtonNewFromEvent(ev)
 		/*if evb.Type() == 4 {
 			w := da.GetAllocatedWidth()
 			Message(fmt.Sprintf("Click:", evb.X(), evb.Y(), w))
@@ -136,7 +133,6 @@ func (c *ZContext) MkImage() (*TImage, *gtk.Widget) {
 	})
 	imgCtrl.Image.Connect("motion-notify-event", func(da *gtk.DrawingArea, ev *gdk.Event) bool {
 		evb := gdk.EventButtonNewFromEvent(ev)
-		fmt.Println("Evt:", evb.Type(), evb.X(), evb.Y())
 		X, Y := evb.X(), evb.Y()
 		imgCtrl.X0 = min(imgCtrl.X0, X)
 		imgCtrl.X1 = max(imgCtrl.X1, X)

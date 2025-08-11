@@ -3,6 +3,7 @@ package zdb
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -76,7 +77,7 @@ func (db *TuneDB) MsczTuneSave(mscz string, defaultKind string, msczDate time.Ti
 			updatedTune.Fifth = tuneInDB.Fifth
 		}
 	} else {
-		fmt.Println("xml file is missing", updatedTune.Xml) // should panic
+		log.Println("xml file is missing", updatedTune.Xml) // should panic
 	}
 	if tuneInDB.ID != 0 {
 		db.cnx.Model(&updatedTune).Updates(&updatedTune)
@@ -104,7 +105,7 @@ func (db *TuneDB) MsczContentUpdate() {
 			os.MkdirAll(repo.Location, 0777) // Create dir any way
 			os.Mkdir(path.Join(repo.Location, "xml"), 0777)
 			os.Mkdir(path.Join(repo.Location, "img"), 0777)
-			fmt.Println("Directory not found:", repo.Location)
+			log.Println("Directory not found:", repo.Location)
 			continue
 		}
 
@@ -115,13 +116,13 @@ func (db *TuneDB) MsczContentUpdate() {
 		tb := time.Now()
 		for _, mscz := range lMscz {
 			if idx, ok := m[mscz.Name]; !ok || mscz.Date.Unix() != lTunes[idx].FileDate.Unix() {
-				fmt.Println("Update:", mscz.Name)
+				log.Println("Update:", mscz.Name)
 				db.MsczTuneSave(mscz.Name, repo.DefaultKind, mscz.Date)
 			}
 		}
 		d1 += time.Now().Sub(tb)
 	}
-	fmt.Printf("MszUpdate: T0 : %v D0: %v D1: %v (Total:%v)\n", da, d0, d1, time.Now().Sub(t0))
+	log.Printf("MszUpdate: T0 : %v D0: %v D1: %v (Total:%v)\n", da, d0, d1, time.Now().Sub(t0))
 }
 func (db *TuneDB) PurgeMscz() {
 	var tunes []DTune

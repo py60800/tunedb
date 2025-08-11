@@ -1,9 +1,12 @@
 // FirstNote
 package zixml
-
+import (
+"github.com/py60800/tunedb/internal/util"
+)
 func GetFirstNote(file string) (first string, mode string, fifth int, BIndex string) {
 	part, err := Parse(file)
 	if err != nil || len(part.Part) == 0 || len(part.Part[0].Measures) < 2 {
+		util.WarnOnError(err)
 		return "", "none", 0, ""
 	}
 	p := part.Part[0]

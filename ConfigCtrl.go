@@ -2,7 +2,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/py60800/tunedb/internal/zdb"
@@ -65,10 +65,9 @@ func mkConfigurationWindow(c *ZContext) *SourceRepositoryConfigurator {
 	lastLineBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 1)
 	lastLineBox.SetSpacing(50)
 
-	save, _ := gtk.ButtonNewWithLabel("Save & Scan")
+	save, _ := gtk.ButtonNewWithLabel("Save")
 	save.Connect("clicked", func() {
 		data := cfg.wListStore.GetValues()
-		fmt.Println(data)
 		sr := make([]zdb.SourceRepository, len(data))
 		for i, d := range data {
 			sr[i] = zdb.SourceRepository{
@@ -79,6 +78,7 @@ func mkConfigurationWindow(c *ZContext) *SourceRepositoryConfigurator {
 				ID:          d["_ID"].(int),
 			}
 		}
+		log.Println("Save Repository:",sr)
 		c.DB.SourceRepositoryUpdateAll(sr)
 		c.sourceRepositories = c.DB.SourceRepositoryGetAll()
 		cfg.win.Hide()
@@ -154,29 +154,6 @@ func (c *ZContext) TuneKindConfiguration() {
 			c.DB.TuneKindUpdateAll(res)
 			c.tuneSelector.UpdateTK()
 			c.tuneCtx.UpdateTuneKind()
-			/*
-				fmt.Println(tkc)
-				ls := tkc.wListStore.GetListStore()
-				res := make([]TuneKind, 0)
-				iter, ok := ls.GetIterFirst()
-				if ok {
-					for {
-						res = append(res,
-							TuneKind{
-								Kind:  ListStoreGetString(ls, iter, 0),
-								Tempo: ListStoreGetInt(ls, iter, 1),
-								ID:    ListStoreGetInt(ls, iter, tkc.wListStore.GetIdIdx()),
-							})
-						if !ls.IterNext(iter) {
-							break
-						}
-
-					}
-					c.DB.TuneKindUpdateAll(res)
-					c.tuneSelector.UpdateTK()
-					c.tuneCtx.UpdateTuneKind()
-				}
-			*/
 			tkc.win.Hide()
 		})
 		cancel, _ := gtk.ButtonNewWithLabel("Cancel")

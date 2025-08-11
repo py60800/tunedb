@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 
 	"github.com/py60800/tunedb/internal/imgprint"
 	"github.com/py60800/tunedb/internal/player"
@@ -174,6 +175,7 @@ func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
 }
 
 func Quit() {
+	log.Println("TuneDb Quit")
 	GetContext().midiPlayCtrl.Stop()
 	GetContext().midiPlayCtrl.Zique.Kill()
 	GetContext().mp3Player.Stop()
@@ -287,6 +289,7 @@ var StartupMessages []string
 
 func OnceCheck() {
 	for _, m := range StartupMessages {
+		log.Println("Startup message:", m)
 		Message(m)
 	}
 	StartupMessages = []string{}
@@ -352,47 +355,48 @@ func (c *ZContext) MakeUI() {
 	})
 	firstLine.AttachNextTo(cpy, c.playCtrl, gtk.POS_RIGHT, 1, 1)
 
-	leftColumn, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
+	rightColumn, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
 
 	edit := MkButton("Muse Edit", func() {
 		if tune := c.ActiveTune; tune != nil {
 			zdb.MuseEdit(tune.File)
 		}
 	})
-	leftColumn.Add(edit)
+	rightColumn.Add(edit)
 	refresh := MkButton("Refresh Tune", func() {
 		c.RefreshTune()
 	})
-	leftColumn.Add(refresh)
+	rightColumn.Add(refresh)
+
+	c.abcImport, w = c.MkAbcImport()
+	rightColumn.Add(w)
+
+	c.midiPlayCtrl, w = c.MkMidiPlayCtrl()
+	rightColumn.Add(w)
+
+	c.mp3SetPlayer, w = MkMp3SetConfigurator(c.cursor)
+	rightColumn.Add(w)
+
 	if WithConcertina {
 		c.concertinaCtrl, w = ConcertinaCtrlNew()
-		leftColumn.Add(w)
+		rightColumn.Add(w)
 	}
 
 	c.setPlayCtrl, w = MkSetPlayCtrl()
-	leftColumn.Add(w)
+	rightColumn.Add(w)
 
 	c.listMgr, w = MkListMgr()
-	leftColumn.Add(w)
-
-	c.midiPlayCtrl, w = c.MkMidiPlayCtrl()
-	leftColumn.Add(w)
+	rightColumn.Add(w)
 
 	c.extLinkCtrl, w = c.MkExtLinkCtrl()
-	leftColumn.Add(w)
-
-	c.mp3SetPlayer, w = MkMp3SetConfigurator(c.cursor)
-	leftColumn.Add(w)
+	rightColumn.Add(w)
 
 	w = TheSessionCtrlNew()
-	leftColumn.Add(w)
-
-	c.abcImport, w = c.MkAbcImport()
-	leftColumn.Add(w)
-
-	c.xchgCtrl, w = c.MkXchgCtrl()
-	leftColumn.Add(w)
-
+	rightColumn.Add(w)
+	if WithXchg {
+		c.xchgCtrl, w = c.MkXchgCtrl()
+		rightColumn.Add(w)
+	}
 	print := MkButton("Print...", func() {
 		if c.ActiveTune != nil && c.ActiveTune.ID != 0 {
 			file := c.ActiveTune.Img
@@ -402,8 +406,8 @@ func (c *ZContext) MakeUI() {
 			c.printer.Run([]string{file})
 		}
 	})
-	leftColumn.Add(print)
-	body.Attach(leftColumn, xc, 0, 2, 1)
+	rightColumn.Add(print)
+	body.Attach(rightColumn, xc, 0, 2, 1)
 	grid.Attach(body, 0, 2, 12, 1)
 	c.win.Maximize()
 	c.win.ShowAll()
@@ -415,7 +419,7 @@ func (c *ZContext) MakeUI() {
 
 		bodyAllocation := body.GetAllocation()
 		rightA := firstCol.GetAllocation()
-		leftA := leftColumn.GetAllocation()
+		leftA := rightColumn.GetAllocation()
 		remainder := leftA.GetX() - (rightA.GetX() + rightA.GetWidth())
 
 		if geo != nil && bodyAllocation.GetWidth() > geo.GetWidth() {
@@ -443,25 +447,34 @@ func (c *ZContext) MakeUI() {
 
 // ****************************************************************************
 var WithConcertina bool
+var WithXchg bool
 
 func main() {
 	var workingDir string
 	flag.BoolVar(&WithConcertina, "concertina", false, "Add concertina tab generator")
+	flag.BoolVar(&WithXchg, "x", false, "Tune Xchg")
 	flag.StringVar(&workingDir, "d", "", "Working directory")
 	flag.Parse()
 	MakeHomeContext(workingDir)
+	log.Println("Gtk Init")
 	gtk.Init(nil)
 
 	c := GetContext()
+	log.Println("Open database")
 	c.DB = zdb.TuneDBNew()
+	log.Println("Helper init")
 	util.HelperInit(ConfigBase)
+	log.Println("Param init")
 	zdb.ParamInit(c.DB)
 
 	c.sourceRepositories = c.DB.SourceRepositoryGetAll()
+	log.Println("Mscz Content Update")
 	c.DB.MsczContentUpdate()
 
+	log.Println("Retrieve MP3 from DB")
 	c.mp3Collection = zdb.MP3CollectionNew(c.DB)
 	c.mp3Player = player.Mp3PlayerNew()
+	log.Println("Create user interface")
 	c.MakeUI()
 	c.tuneSelector.Refresh()
 	c.printer = imgprint.PrinterNew()
@@ -469,6 +482,7 @@ func main() {
 		WarnOnStart(msg)
 	}
 
+	log.Println("Gtk Main")
 	gtk.Main()
 
 }

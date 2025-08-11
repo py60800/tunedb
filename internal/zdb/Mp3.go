@@ -3,6 +3,7 @@ package zdb
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"time"
 
@@ -70,20 +71,20 @@ func (db *TuneDB) Mp3DBStore2(files []FileInfo) {
 	for i := range knownMp3 {
 		m[knownMp3[i].File] = i
 	}
-	fmt.Println("GetAllMp3:", time.Now().Sub(start))
+	log.Println("GetAllMp3:", time.Now().Sub(start))
 	update := 0
 	new := 0
 	for i := range files {
 		if idx, ok := m[files[i].Name]; ok {
 			if files[i].Date.Unix() != knownMp3[idx].FileDate.Unix() {
-				fmt.Println("Update:", knownMp3[idx].File, knownMp3[idx].FileDate, files[i].Date)
+				log.Println("Update:", knownMp3[idx].File, knownMp3[idx].FileDate, files[i].Date)
 				mp3File, _ := MP3GetTag(files[i].Name, files[i].Date, &knownMp3[idx])
 				err := db.cnx.Save(mp3File)
 				warnOnDbError(err)
 				update++
 			}
 		} else {
-			fmt.Println("New:", files[i].Name)
+			log.Println("New:", files[i].Name)
 			if mp3File, err := MP3GetTag(files[i].Name, files[i].Date, nil); err == nil {
 				err := db.cnx.Create(mp3File)
 				warnOnDbError(err)
@@ -91,7 +92,7 @@ func (db *TuneDB) Mp3DBStore2(files []FileInfo) {
 			}
 		}
 	}
-	fmt.Println("Mp3:", len(files), update, new)
+	log.Println("Mp3:", len(files), update, new)
 }
 func (db *TuneDB) Mp3DBLoad() []MP3File {
 	var lmp3 []MP3File
@@ -125,7 +126,7 @@ func (db *TuneDB) Mp3SetGetBySetID(i int) *MP3TuneSet {
 	var ts MP3TuneSet
 	db.cnx.Where("mp3_file_id = ?", i).First(&ts)
 	if ts.ID == 0 {
-		fmt.Println("Mp3SetGetBySetID:", i, "Not found")
+		log.Println("Mp3SetGetBySetID:", i, "Not found")
 		return nil
 	}
 	var tunes []MP3TuneInSet

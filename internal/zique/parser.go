@@ -6,8 +6,10 @@ import (
 	//	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
+	"github.com/py60800/tunedb/internal/util"
 )
 
 // Chords
@@ -168,7 +170,7 @@ func (m *Mixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		d.Skip()
 		return nil
 	default:
-		//fmt.Printf("unknown element!: %s\n", start)
+		log.Printf("Xml Parse unknown element!: %s\n", start)
 		m.Elem = nil
 		d.Skip()
 		return nil
@@ -212,7 +214,7 @@ func (m *AMixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		d.Skip()
 		return nil
 	default:
-		fmt.Printf("unknown element: %s\n", start)
+		log.Printf("Xml unknown element: %s\n", start)
 		d.Skip()
 		return nil
 	}
@@ -309,14 +311,12 @@ func Parse(fileName string) (MPartition, error) {
 	defer xmlFile.Close()
 
 	if err != nil {
-		fmt.Println("Can't read:", err)
+		util.WarnOnError(err)
 		return partition, err
 	}
 	byteValue, _ := ioutil.ReadAll(xmlFile)
 	err = xml.Unmarshal(byteValue, &partition)
-	if err != nil {
-		fmt.Println("Parsing error:", err)
-	}
+	util.WarnOnError(err)
 	partition.NormalizeDivisions(MasterDivisions)
 	return partition, nil
 

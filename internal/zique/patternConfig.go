@@ -1,7 +1,7 @@
 package zique
 
 import (
-	"fmt"
+	"log"
 	"path"
 	"strconv"
 	"strings"
@@ -146,19 +146,19 @@ func GetDrumPattern(name string) []Beat {
 				case 1:
 					var ok bool
 					if patch, ok = PatternConfig.DrumPatch[beat[0]]; !ok {
-						fmt.Println("Invalid drum patch:", beat[0])
+						log.Println("Invalid drum patch:", beat[0])
 						return []Beat{}
 					}
 				}
 				res[i] = Beat{Instrument: patch, Duration: duration, Velocity: velocity}
 			} else {
-				fmt.Println("Invalid Beat:", b)
+				log.Println("Invalid Beat:", b)
 				return []Beat{}
 			}
 		}
 		return res
 	}
-	fmt.Println("Drum Pattern not found:", name, PatternConfig.DrumPattern)
+	log.Println("Drum Pattern not found:", name, PatternConfig.DrumPattern)
 	return []Beat{}
 }
 func normalize(n []float64) []float64 {
@@ -181,7 +181,7 @@ func GetVelocityPattern(name string) []float64 {
 	if dp, ok := PatternConfig.VelocityPattern[name]; ok {
 		return normalize(dp.Velocity)
 	}
-	fmt.Println("Velocity Pattern not found:", name)
+	log.Println("Velocity Pattern not found:", name)
 	return []float64{1.0}
 
 }
@@ -189,7 +189,7 @@ func GetSwingPattern(name string) []float64 {
 	if dp, ok := PatternConfig.SwingPattern[name]; ok {
 		return dp.Delta
 	}
-	fmt.Println("Swing Pattern not found:", name)
+	log.Println("Swing Pattern not found:", name)
 	return []float64{0.0}
 
 }
@@ -205,7 +205,7 @@ func GetChordPattern(name string) []ChordStroke {
 	}
 	if ch, ok := PatternConfig.ChordPattern[name]; ok {
 		if len(ch.Duration) != len(ch.Velocity) {
-			fmt.Println("Invalid Chord Pattern:", name)
+			log.Println("Invalid Chord Pattern:", name)
 			return []ChordStroke{}
 		}
 		res := make([]ChordStroke, len(ch.Duration))
@@ -214,7 +214,7 @@ func GetChordPattern(name string) []ChordStroke {
 		}
 		return res
 	}
-	fmt.Println("Chord pattern not found:", name)
+	log.Println("Chord pattern not found:", name)
 	return []ChordStroke{}
 }
 

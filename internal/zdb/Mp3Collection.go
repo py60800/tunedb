@@ -1,7 +1,7 @@
 package zdb
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"path"
 	"sort"
@@ -35,7 +35,7 @@ func MP3CollectionNew(db *TuneDB) *MP3Collection {
 	for _, id := range ids {
 		mp3Files[index[id]].HasContent = true
 	}
-	fmt.Printf("Mp3Collection: %d files, %d nodes\n", len(mp3Files), node0.Count())
+	log.Printf("Mp3Collection: %d files, %d nodes\n", len(mp3Files), node0.Count())
 	return &MP3Collection{
 		list:  mp3Files,
 		node0: node0,
@@ -151,9 +151,9 @@ func MP3DBUpdate(db *TuneDB) {
 			start := time.Now()
 			files := GetFileListR2(d.Location, ".mp3", d.Recurse)
 			stepT := time.Now()
-			fmt.Printf("GetFileList %v : Found: %v , D:%v\n", d.Location, len(files), stepT.Sub(start))
+			log.Printf("GetFileList %v : Found: %v , D:%v\n", d.Location, len(files), stepT.Sub(start))
 			db.Mp3DBStore2(files)
-			fmt.Println("Mp3DBStore Duration:", time.Now().Sub(stepT))
+			log.Println("Mp3DBStore Duration:", time.Now().Sub(stepT))
 		}
 	}
 }

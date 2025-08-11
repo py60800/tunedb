@@ -69,7 +69,7 @@ func TuneSetSelectorNew(tsSelect func(*zdb.TuneSet)) (gtk.IWidget, *TuneSetSelec
 	return grid, setSelector
 }
 func (setSelector *TuneSetSelector) UpdateCombo(txt string) {
-	fmt.Println("Update Combo:", txt, len(setSelector.tuneSets))
+	//fmt.Println("Update Combo:", txt, len(setSelector.tuneSets))
 
 	l := setSelector.nodeSearch.Search(txt)
 	setSelector.fillSelector(l)

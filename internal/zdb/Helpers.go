@@ -3,6 +3,7 @@ package zdb
 
 import (
 	"fmt"
+	"log"
 	"path"
 	"regexp"
 	"runtime"
@@ -62,9 +63,8 @@ func (t *DTune) MsczRefreshImg() {
 	if cmd == nil {
 		return
 	}
-	if err := cmd.Run(); err != nil {
-		fmt.Println("Refresh Img:", err)
-	}
+	err := cmd.Run()
+	util.WarnOnError(err)
 
 	date, ok := GetModificationDate(imgFile)
 	if !ok || date.Before(start) {
@@ -85,14 +85,12 @@ func (t *DTune) MsczRefreshXml() {
 	if cmd == nil {
 		return
 	}
-	if err := cmd.Run(); err != nil {
-		fmt.Println("MsczXml Failed:", err)
-	}
+	err := cmd.Run()
+	util.WarnOnError(err)
 	date, ok := GetModificationDate(t.Xml)
 	if !ok || date.Before(start) {
-		fmt.Println("RefreshXml Failed")
+		log.Println("RefreshXml Failed")
 	}
-
 }
 
 func NiceName(s string) string {
@@ -124,7 +122,9 @@ func warnOnDbError(cnx *gorm.DB) {
 			if fn != nil {
 				caller = fn.Name()
 			}
-			fmt.Printf("caller:%v file:%v line:%v error:%v\n", caller, path.Base(file), ln, cnx.Error)
+			msg := fmt.Sprintf("caller:%v file:%v line:%v error:%v", caller, path.Base(file), ln, cnx.Error)
+			fmt.Println(msg)
+			log.Println(msg)
 		}
 	}
 }

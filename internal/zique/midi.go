@@ -2,6 +2,7 @@ package zique
 
 import (
 	"fmt"
+	"log"
 	"sync"
 )
 
@@ -130,7 +131,7 @@ func MidiRecord(pl *Player, mchan chan SeqEvent, ctrlChan chan int, wg *sync.Wai
 		case cmd := <-ctrlChan:
 			switch cmd {
 			case 0:
-				fmt.Println("Midi: Finish")
+				log.Println("Midi: Finish")
 				wg.Done()
 				return
 			case 1:

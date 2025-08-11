@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 
@@ -118,6 +119,7 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 	is += 10
 
 	save := MkButton("Save", func() {
+
 		sp.SaveTuneList()
 		sp.TuneCtxRefresh()
 	})
@@ -129,6 +131,7 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 		sp.TuneCtxRefresh()
 	})
 	deDup := MkButton("DeDup", func() {
+		log.Println("Deduplicate TuneList")
 		sp.DeDup()
 	})
 
@@ -139,6 +142,7 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 	del := MkButton("Del", func() {
 		if sp.currentTuneList != nil && sp.currentTuneList.ID != 0 {
 			if len(sp.currentTuneList.Tunes) < 5 || MessageConfirm(fmt.Sprintf("Delete tune list ?")) {
+				log.Println("Delete tune list:", sp.currentTuneList.ID)
 				GetContext().DB.TuneListRemove(sp.currentTuneList)
 				zdb.TuneTagUpdate(GetContext().DB)
 				sp.TuneCtxRefresh()
@@ -190,7 +194,9 @@ func (sp *ListMgr) clear() {
 func (sp *ListMgr) SelectTuneList(ts *zdb.TuneListBase) {
 	sp.currentTuneList = GetContext().DB.GetTuneListByID(ts.ID)
 	if sp.currentTuneList == nil {
-		Message(fmt.Sprintf("[%v] not found", ts.Name))
+		msg := fmt.Sprintf("[%v] not found", ts.Name)
+		log.Println("Select Tune List", msg)
+		Message(msg)
 	}
 	sp.lName.SetLabel(ts.Name)
 	sp.name.SetText(ts.Name)
@@ -295,6 +301,7 @@ func (sp *ListMgr) SaveTuneList() bool {
 			DTuneID: t["ID"].(int),
 		}
 	}
+	log.Println("Save Tune List:", name)
 	GetContext().DB.TuneListSave(sp.currentTuneList)
 	zdb.TuneTagUpdate(GetContext().DB)
 

@@ -3,6 +3,7 @@ package util
 import (
 	_ "embed"
 	"fmt"
+	"log"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -21,7 +22,9 @@ type HelperConfig struct {
 var helperConfig HelperConfig
 
 func ReadConfig[T any](fileName string, defaultContent string) T {
+	log.Println("Read config:",fileName)
 	if stat, err := os.Stat(fileName); err != nil || stat.Size() == 0 {
+		log.Println("Create missing config file", fileName)
 		f, err := os.Create(fileName)
 		if err != nil {
 			panic(fmt.Errorf("Failed to read :%v (%v)", fileName, err))
@@ -79,7 +82,7 @@ var H *Helper
 
 func HelperInit(context string) {
 	helperConfig = ReadConfig[HelperConfig](path.Join(context, "config.yml"), "")
-	fmt.Println(helperConfig)
+	//fmt.Println(helperConfig)
 	H = &Helper{currEnv: helperConfig.Helpers}
 	H.currEnv["HOME"], _ = os.UserHomeDir()
 }
@@ -87,13 +90,13 @@ func (h *Helper) Get(name string) string {
 	if s, ok := h.currEnv[name]; ok {
 		return h.replace(s, map[string]string{})
 	}
-	fmt.Printf("Environnement lookup error : % v\n", name)
+	log.Printf("Environnement lookup error : % v\n", name)
 	return ""
 }
 func (h *Helper) MkCmd(cmd string, params map[string]string) *exec.Cmd {
 	base, ok := h.currEnv[cmd]
 	if !ok {
-		fmt.Printf("Failed to create command : %v\n", cmd)
+		log.Printf("Failed to create command : %v\n", cmd)
 		return nil
 	}
 	sp := strings.Fields(base)
@@ -102,7 +105,7 @@ func (h *Helper) MkCmd(cmd string, params map[string]string) *exec.Cmd {
 		cmdArgs = append(cmdArgs, h.replace(item, params))
 	}
 	osCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-	fmt.Println("MkCmd:", osCmd.Args)
+	log.Println("MkCmd:", osCmd.Args)
 	return osCmd
 }
 
@@ -137,6 +140,7 @@ func FatalErr(err error) {
 		} else {
 			msg = fmt.Sprint("Unlocalised error:%v", err)
 		}
+		log.Println("Fatal error:",msg)
 		panic(msg)
 	}
 }
@@ -160,7 +164,7 @@ func CheckErr(err error, txt ...string) bool {
 			}
 			msg += t
 		}
-		fmt.Print(msg)
+		log.Print(msg)
 		return true
 	}
 	return false

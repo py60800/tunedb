@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strconv"
@@ -55,7 +56,7 @@ func AbcParseFile(file string) []AbcTune {
 				tunes = append(tunes, tune)
 				found[tune.X] = 0
 			} else {
-				fmt.Printf("X Duplicate: %s X:%d\n", file, tune.X)
+				log.Printf("X Duplicate: %s X:%d\n", file, tune.X)
 			}
 		}
 		inTune = false
@@ -117,14 +118,13 @@ func Abc2Xml(abcFile string, dir string) (string, error) {
 	if cmd == nil {
 		return "", fmt.Errorf("Command missing")
 	}
-	if err := cmd.Run(); err != nil {
-		return "", err
-	}
+	err := cmd.Run()
+	util.WarnOnError(err)
 
 	base := strings.TrimSuffix(path.Base(abcFile), ".abc")
 	result := path.Join(dir, base+".xml")
 
-	_, err := os.Stat(result)
+	_, err = os.Stat(result)
 	if err != nil {
 		util.WarnOnError(fmt.Errorf("Xml file not found: %v %v\n", result, err))
 		return "", err
@@ -159,7 +159,7 @@ func Abc2Svg(abcFile string, dir string) string {
 	}
 
 	if result == "" {
-		fmt.Println("No SVG for ", abcFile)
+		log.Println("No SVG for ", abcFile)
 	}
 	return result
 }
@@ -170,7 +170,7 @@ func AbcTuneStore(db *TuneDB, tune *AbcTune, TmpDir, XmlDir, ImgDir string) {
 	var d DTune
 	res := db.cnx.Where("abc_hash = ?", tune.Hash).First(&d)
 	if res.Error != gorm.ErrRecordNotFound {
-		fmt.Println("Abc Duplicate:", tune.Title)
+		log.Println("Abc Duplicate:", tune.Title)
 		return // Already in DB
 	}
 	// Check if in database
@@ -179,11 +179,11 @@ func AbcTuneStore(db *TuneDB, tune *AbcTune, TmpDir, XmlDir, ImgDir string) {
 	res = db.cnx.Where("file = ? and x_ref = ? and file_type = ?", tune.File, tune.X, FileTypeAbc).First(&theTune)
 
 	if res.Error == gorm.ErrRecordNotFound {
-		fmt.Printf("AbcTuneStore: Record Not found\n")
+		log.Printf("AbcTuneStore: Record Not found\n")
 		tmpFile := MakeTempFile(TmpDir, tune, base)
 		var err error
 		if tune.Xml, err = Abc2Xml(tmpFile, XmlDir); err != nil {
-			fmt.Println("Failed to create MusicXml for ", tune.File)
+			util.WarnOnError(err)
 		}
 		tune.Svg = Abc2Svg(tmpFile, ImgDir)
 
@@ -199,19 +199,19 @@ func AbcTuneStore(db *TuneDB, tune *AbcTune, TmpDir, XmlDir, ImgDir string) {
 			Kind:     CleanTuneKind(tune.Kind),
 			NiceName: NiceName(tune.Title),
 		}
-		fmt.Println("AbcTuneStore Create:", theTune.File, theTune.XRef, theTune.FileType)
+		log.Println("AbcTuneStore Create:", theTune.File, theTune.XRef, theTune.FileType)
 		db.cnx.Create(&theTune)
 	} else {
-		fmt.Println("AbcTuneStore : Tune found", theTune)
+		log.Println("AbcTuneStore : Tune found", theTune)
 		if theTune.AbcHash == tune.Hash {
 			// Already in Database
-			fmt.Println("AbcTuneStore No change")
+			log.Println("AbcTuneStore No change")
 			return
 		}
 		tmpFile := MakeTempFile(TmpDir, tune, base)
 		var err error
 		if theTune.Xml, err = Abc2Xml(tmpFile, XmlDir); err != nil {
-			fmt.Println("Failed to Create MusicXml for:", theTune.File)
+			util.WarnOnError(err)
 		}
 		theTune.Img = Abc2Svg(tmpFile, ImgDir)
 		theTune.AbcHash = tune.Hash

@@ -5,28 +5,32 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 	"time"
-
+	"github.com/py60800/tunedb/internal/util"
 	xml "github.com/subchen/go-xmldom"
 )
 
 func CopyFile(src, dst string) error {
 	srcfile, err := os.Open(src)
 	if err != nil {
+		util.WarnOnError(err)
 		return err
 	}
 	defer srcfile.Close()
 
 	info, err := srcfile.Stat()
 	if err != nil {
+		util.WarnOnError(err)
 		return err
 	}
 	if info.IsDir() {
+		log.Println("Copy dir attempt")
 		return errors.New("cannot read from directories")
 	}
 
@@ -42,7 +46,7 @@ func CopyFile(src, dst string) error {
 }
 func MsczUpdate(file string, buttons []Button) (err error) {
 	defer func() {
-		fmt.Println("MsczUpdate error:", err)
+		log.Println("MsczUpdate error:", err)
 	}()
 	// Save file
 	dir := path.Dir(file)
@@ -151,15 +155,17 @@ func MsczBackup(file string) (string, error) {
 }
 func MsczCleanUp(file string) (err error) {
 	defer func() {
-		fmt.Println("MsczUpdate error:", err)
+		log.Println("MsczCleanUp error:", err)
 	}()
 	var archiveFile string
 	if archiveFile, err = MsczBackup(file); err != nil {
+		util.WarnOnError(err)
 		return err
 	}
 
 	r, err := zip.OpenReader(archiveFile)
 	if err != nil {
+		util.WarnOnError(err)
 		return err
 	}
 	defer r.Close()

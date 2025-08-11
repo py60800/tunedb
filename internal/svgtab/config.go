@@ -2,7 +2,7 @@
 package svgtab
 
 import (
-	"fmt"
+	"log"
 	"sort"
 )
 
@@ -48,13 +48,13 @@ func text2note(note string) int {
 				case ',':
 					base -= 12
 				default:
-					fmt.Println("Invalid Note:", note)
+					log.Println("Invalid Note:", note)
 				}
 			}
 			return base + 4*12
 		}
 	}
-	fmt.Println("Invalid note:", note)
+	log.Println("Invalid note:", note)
 	return 0
 }
 
@@ -102,14 +102,14 @@ func configAnalysis(c *Config) Note2Button {
 		for ir, row := range layout {
 			for jr, button := range row {
 				if len(button) != 2 {
-					fmt.Printf ("Concertina configuration error => No Push pull for %v %v\n", ir, jr)
+					log.Printf ("Concertina configuration error => No Push pull for %v %v\n", ir, jr)
 					continue
 				}
 				pushNote := text2note(button[0])
 				pullNote := text2note(button[1])
 				n2b[pushNote] = append(n2b[pushNote], Button{Side: side, Row: ir, Rank: jr, Pull: false})
 				n2b[pullNote] = append(n2b[pullNote], Button{Side: side, Row: ir, Rank: jr, Pull: true})
-				fmt.Println(ir, jr, button)
+				log.Println(ir, jr, button)
 			}
 		}
 	}

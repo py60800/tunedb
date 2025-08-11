@@ -2,13 +2,12 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/py60800/tunedb/internal/svgtab"
 	"github.com/py60800/tunedb/internal/zdb"
 	"github.com/py60800/tunedb/internal/zixml"
 
 	"github.com/gotk3/gotk3/gtk"
+	"log"
 )
 
 func BConv(b zdb.Button) svgtab.Button {
@@ -76,7 +75,6 @@ func ConcertinaCtrlNew() (*ConcertinaCtrl, gtk.IWidget) {
 	cc.win.SetKeepAbove(true)
 	cc.win.SetSizeRequest(200, 400)
 	cc.win.Connect("delete-event", func() bool {
-		fmt.Println("Close Request")
 		cc.Save()
 		cc.Hide()
 		return true
@@ -123,6 +121,7 @@ func ConcertinaCtrlNew() (*ConcertinaCtrl, gtk.IWidget) {
 
 	})
 	save := MkButton("Save Button", func() {
+		log.Println("Concertina Save Button")
 		c := GetContext()
 		if tune := ActiveTune(); tune != nil && tune.ID != 0 {
 			if s := c.svgt; s != nil {
@@ -139,6 +138,7 @@ func ConcertinaCtrlNew() (*ConcertinaCtrl, gtk.IWidget) {
 	saveFull := MkButton("Save Full", func() {
 		c := GetContext()
 		if tune := ActiveTune(); tune != nil && tune.ID != 0 {
+		log.Println("Concertina Save Full:",tune.File)
 			if s := c.svgt; s != nil {
 				btns := make([]zdb.CButton, len(s.Buttons))
 				for i := range btns {
@@ -158,6 +158,7 @@ func ConcertinaCtrlNew() (*ConcertinaCtrl, gtk.IWidget) {
 	cleanUp := MkButton("CleanUp", func() {
 		c := GetContext()
 		if tune := ActiveTune(); tune != nil && tune.ID != 0 {
+			log.Println("Concertina Cleanup")
 			if s := c.svgt; s != nil {
 				s.MsczCleanUp(c.ActiveTune.File)
 			}

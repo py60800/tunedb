@@ -3,6 +3,7 @@ package zdb
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"sort"
@@ -138,7 +139,7 @@ func (db *TuneDB) TuneGetSimilar(tune *DTune) *DTune {
 	var tunes []DTune
 	r := db.cnx.Where("breathnach_code = ?", tune.BreathnachCode).Find(&tunes)
 	warnOnDbError(r)
-	fmt.Printf("[%v] %v => %d \n", tune.Title, tune.BreathnachCode, len(tunes))
+	log.Printf("[%v] %v => %d \n", tune.Title, tune.BreathnachCode, len(tunes))
 	for i, t := range tunes {
 		if t.ID == tune.ID {
 			return &tunes[(i+1)%len(tunes)]
@@ -202,9 +203,8 @@ func (db *TuneDB) TuneSearch(filter Filter) []DTuneReference {
 	}
 	var tunes []DTuneReference
 	wdb = wdb.Model(&DTune{}).Find(&tunes)
-	if wdb.Error != nil {
-		fmt.Println("Search error:", wdb.Error)
-	}
+	warnOnDbError(wdb)
+
 	if filter.List == 0 {
 		TuneSort(tunes, filter.SortMethod)
 	} else {
@@ -243,7 +243,6 @@ func (db *TuneDB) TunesGetFileList() []TuneFile {
 	return tunes
 }
 func (db *TuneDB) TuneSearchM(filter map[string]any) []DTuneReference {
-	fmt.Println("Tune Search:", filter)
 	wdb := db.cnx
 	includeHidden := false
 	sort := ""
@@ -294,7 +293,6 @@ func (db *TuneDB) TuneSearchM(filter map[string]any) []DTuneReference {
 	}
 
 	if list != "" {
-		fmt.Println("List:", list)
 		id := db.TuneListGetId(list)
 		wdb = wdb.Joins("inner join tune_list_items on tune_list_id = ? and d_tune_id = d_tunes.id", id)
 		sort = ""
@@ -373,7 +371,7 @@ func (db *TuneDB) GetDuplicates(index string) []string {
 	}
 	var res []pTune
 	r := db.cnx.Model(DTune{}).Where("breathnach_code = ?", index).Find(&res)
-	fmt.Println(r.Error)
+	warnOnDbError(r)
 	result := make([]string, len(res))
 	for i, r := range res {
 		result[i] = fmt.Sprintf("[%d] %s/%s", r.ID, r.Kind, r.Title)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"runtime"
@@ -26,12 +27,16 @@ func errorMsg(kind string, err error) string {
 }
 func PanicOnError(err error) {
 	if err != nil {
-		panic(fmt.Errorf("%s", errorMsg("Fatal", err)))
+		msg := errorMsg("Fatal", err)
+		log.Println(msg)
+		panic(errors.New(msg))
 	}
 }
 func WarnOnError(err error) {
 	if err != nil {
-		fmt.Println(errorMsg("Warn", err))
+		msg := errorMsg("Warn", err)
+		log.Println(msg)
+		fmt.Println(msg)
 	}
 }
 

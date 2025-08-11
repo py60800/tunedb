@@ -3,7 +3,7 @@ package main
 
 import (
 	"fmt"
-
+        "log"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -224,7 +224,7 @@ func (ls *WListStore) GetColIdx(n string) int {
 	if i, ok := ls.colNames[n]; ok {
 		return i
 	}
-	fmt.Println("Unknown column:", n, ls.colNames)
+	log.Println("GetColIdx Unknown column:", n, ls.colNames)
 	return -1
 }
 
@@ -246,7 +246,7 @@ func ListStoreGetInt(ls *gtk.ListStore, iter *gtk.TreeIter, col int) int {
 			case int:
 				return v
 			default:
-				fmt.Printf("ListStoreGetInt: invalid type:%T\n", v)
+				log.Printf("ListStoreGetInt: invalid type:%T\n", v)
 			}
 		}
 	}
@@ -259,7 +259,7 @@ func ListStoreGetBool(ls *gtk.ListStore, iter *gtk.TreeIter, col int) bool {
 			case bool:
 				return v
 			default:
-				fmt.Printf("ListStoreGetBool: invalid type:%T\n", v)
+				log.Printf("ListStoreGetBool: invalid type:%T\n", v)
 			}
 		}
 
@@ -272,7 +272,7 @@ func (wl *WListStore) insert(pos *gtk.TreeIter, data map[string]any) {
 		if i := wl.GetColIdx(k); i >= 0 {
 			err := wl.ListStore.SetValue(pos, i, c)
 			if err != nil {
-				fmt.Printf("Error: %v %T\n", err, c)
+				log.Printf("Col Insert Error: %v %T\n", err, c)
 			}
 		} else {
 			panic(fmt.Sprintf("Internal error : Unknown column: %v %v", k, c))
@@ -441,7 +441,6 @@ func WListStoreNew(container *gtk.ScrolledWindow, columns []IListStoreColumn, wi
 		}
 	})
 	wl.treeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) {
-		fmt.Println("Row activated:", path)
 		if wl.onActivate == nil {
 			if iter, ok := ls.GetIter(path); ok == nil {
 				for i, c := range columns {

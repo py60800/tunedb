@@ -2,7 +2,7 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	"time"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -61,7 +61,6 @@ func MkButton(label string, ft func()) *gtk.Button {
 	return b
 }
 func MkButtonIcon(label string, ft func()) *gtk.Button {
-	fmt.Println("Icon:", label)
 	b, _ := gtk.ButtonNewFromIconName(label, gtk.ICON_SIZE_BUTTON)
 	b.Connect("clicked", ft)
 	return b

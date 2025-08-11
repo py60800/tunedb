@@ -2,8 +2,8 @@
 package player
 
 import (
-	"fmt"
 	"io"
+	"log"
 
 	//	"math"
 	"os"
@@ -13,6 +13,7 @@ import (
 
 	mp3 "github.com/hajimehoshi/go-mp3"
 	"github.com/py60800/oto/v3"
+	"github.com/py60800/tunedb/internal/util"
 )
 
 type Mp3Player struct {
@@ -63,11 +64,8 @@ func (m *Mp3Player) selectContext(sampleRate int) *oto.Context {
 		Format: oto.FormatSignedInt16LE,
 	}
 	otoCtx, readyChan, err := oto.NewContext(op)
-	if err != nil {
-		panic(fmt.Sprintf("Internal Error =>oto.NewContext failed: %v for SR:%v", err.Error(), sampleRate))
-	}
+	util.PanicOnError(err)
 
-	fmt.Println("Oto context created for samplerate: ", sampleRate)
 	<-readyChan
 	m.otoContext = otoCtx
 	m.sampleRate = sampleRate
@@ -174,10 +172,10 @@ type spyReader struct {
 }
 
 func (spy *spyReader) readingThread() {
-	fmt.Println("Start Reader")
+	log.Println("Start Reader")
 	var rubberBand *Rubberband = nil
 	defer func() {
-		fmt.Println("Reader finished!")
+		log.Println("Reader finished!")
 		close(spy.dataChan)
 		if rubberBand != nil {
 			rubberBand.Delete()
@@ -284,7 +282,6 @@ func (m *Mp3Player) _play() {
 		time.Sleep(100 * time.Millisecond)
 	}
 	m.player.Close()
-	fmt.Println("Wait for reader")
 	spy.wg.Wait()
 	m.doneChannel <- 0
 }

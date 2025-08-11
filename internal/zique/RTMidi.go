@@ -3,6 +3,7 @@ package zique
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	rtmidi "gitlab.com/gomidi/midi/v2"
@@ -47,21 +48,22 @@ func (p PTempoChange) GetRtMidiEvent() []byte {
 
 func GetMidiSink(midiPort string) (func(rtmidi.Message) error, string) {
 	Ports := rtmidi.GetOutPorts()
-	fmt.Println("Available Midi Ports:")
+	log.Println("Available Midi Ports:")
 	for _, p := range Ports {
-		fmt.Println("-", p)
+		log.Println("-", p)
 	}
 	if len(Ports) == 0 {
-		fmt.Println("No Midi devices")
+		log.Println("No Midi devices")
 		return nil, "Major failure => No MIDI device"
 	}
 	if out, err := rtmidi.FindOutPort(midiPort); err == nil {
-		fmt.Println("Got synth")
+		log.Println("Got synth")
 		send, err := rtmidi.SendTo(out)
 		if err != nil {
-			fmt.Println("Midi connection error")
+			log.Println("Midi connection error")
 			return nil, "Can't connect to MIDI port"
 		}
+		log.Println("Connected to Midi port:", out)
 		return send, ""
 	} else {
 		// Try a fall back to last channel
@@ -69,7 +71,7 @@ func GetMidiSink(midiPort string) (func(rtmidi.Message) error, string) {
 			j := len(Ports) - 1 - i
 			send, err := rtmidi.SendTo(Ports[j])
 			if err == nil {
-				fmt.Println("Can't connect to MIDI port:", midiPort)
+				log.Println("Can't connect to MIDI port:", midiPort)
 				return send, fmt.Sprint("Fallback to midi port:", Ports[j])
 			}
 		}
@@ -136,7 +138,7 @@ func MidiSink(mchan chan SeqEvent, ctrlChan chan int, sendChan chan []byte, feed
 			ntime := evt.Tick
 			wait := time.Duration(ntime-clock) * TickTime
 			if wait < 0 || wait > 2*time.Second {
-				fmt.Printf("Sequence error Event:%v (PrevEvent %d:%v) ntime:%v clock%v ntime-nclock:%v clock-ntime:%v\n ",
+				log.Printf("Sequence error Event:%v (PrevEvent %d:%v) ntime:%v clock%v ntime-nclock:%v clock-ntime:%v\n ",
 					evt.Event.String(),
 					lastEvent.Tick, lastEvent.Event.String(),
 					ntime, clock, ntime-clock, clock-ntime)

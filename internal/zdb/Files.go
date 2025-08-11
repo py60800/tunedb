@@ -5,7 +5,6 @@ import (
 	"archive/zip"
 	"encoding/xml"
 
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -31,7 +30,7 @@ type Mscz struct {
 func MsczGetTitle(file string) string {
 	r, err := zip.OpenReader(file)
 	if err != nil {
-		fmt.Println(file, " ", err)
+		util.WarnOnError(err)
 		return "No title"
 	}
 	defer r.Close()

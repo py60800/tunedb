@@ -3,8 +3,9 @@ package main
 
 import (
 	"github.com/py60800/tunedb/internal/zdb"
-
+	"github.com/py60800/tunedb/internal/util"
 	"github.com/gotk3/gotk3/gtk"
+	"log"
 )
 
 type AbcImporter struct {
@@ -37,7 +38,9 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 	}
 	importB, _ := gtk.ButtonNewWithLabel("MuseScore Import")
 	importB.Connect("clicked", func() {
-		msg, _ := zdb.AbcImport(getText(), false)
+		txt := getText()
+		log.Println("AbcImport Muse", util.STruncate(txt,80))
+		msg, _ := zdb.AbcImport(txt, false)
 		if msg != "" {
 			Message(msg)
 		}
@@ -45,6 +48,8 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 	})
 	importD, _ := gtk.ButtonNewWithLabel("Direct Import")
 	importD.Connect("clicked", func() {
+		txt := getText()
+		log.Println("AbcImport Direct", util.STruncate(txt,80))
 		msg, err := zdb.AbcImport(getText(), true)
 		if msg != "" {
 			Message(msg)

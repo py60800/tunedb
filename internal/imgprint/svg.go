@@ -2,6 +2,7 @@ package imgprint
 
 import (
 	"fmt"
+	"log"
 
 	"os"
 	"strings"
@@ -12,7 +13,7 @@ import (
 func ReadXml(file string) *xml.Document {
 	doc, err := xml.ParseFile(file)
 	if err != nil {
-		fmt.Println("Read Xml:", err)
+		log.Println("ImgPrint: Read Xml:", err)
 		return nil
 	}
 	return doc
@@ -48,7 +49,7 @@ func svgPatch(file string) string {
 			svg.SetAttributeValue("width", f2t(w)+"px")
 			svg.RemoveAttribute("viewBox")
 			svg.SetAttributeValue("viewBox", fmt.Sprintf("%2.1f %2.1f %2.1f %2.1f", x0, y0, w, h+4))
-			fmt.Println("Img Patched")
+			log.Println("ImgPrint: Img Patched")
 		}
 
 	}

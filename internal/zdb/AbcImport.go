@@ -3,6 +3,7 @@ package zdb
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -37,7 +38,7 @@ func guessTarget(kind string) (string, string) {
 	return defaultR, "-"
 }
 func AbcImport(abc string, direct bool) (string, error) {
-	fmt.Println("Abc Import:", abc)
+	log.Println("Abc Import:", util.STruncate(abc,80))
 	txt := strings.Split(abc, "\n")
 	warning := ""
 	var base string
@@ -59,7 +60,8 @@ func AbcImport(abc string, direct bool) (string, error) {
 		buffer = append(buffer, byte('\n'))
 	}
 	abcFile := path.Join("tmp", base+".abc")
-	f, _ := os.Create(abcFile)
+	f, err := os.Create(abcFile)
+	util.WarnOnError(err)
 	f.Write(buffer)
 	f.Close()
 
@@ -69,7 +71,6 @@ func AbcImport(abc string, direct bool) (string, error) {
 		// Check for duplicate
 		index := zixml.ComputeIndexForFile(xmlFile)
 		duplicates := tuneDB.GetDuplicates(index)
-		fmt.Printf("Index:%s %s (%v)\n", index, xmlFile, duplicates)
 		if len(duplicates) > 0 {
 			warning = "Potential duplicates:\n"
 			duplicates = util.Truncate(duplicates, 5)
@@ -98,6 +99,9 @@ func AbcImport(abc string, direct bool) (string, error) {
 				}
 			}
 		}
+	}
+	if warning != "" {
+		log.Println(warning)
 	}
 	return warning, nil
 }

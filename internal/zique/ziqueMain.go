@@ -2,7 +2,7 @@ package zique
 
 import (
 	"bufio"
-	"fmt"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -153,16 +153,16 @@ func (z *ZiquePlayer) Play(tune string) {
 }
 func (z *ZiquePlayer) PlaySet(tunes MusicSet) {
 	RtCtrlChan <- 3 // Resume Pause
-	fmt.Println("ZPlay:", tunes)
+	log.Println("Midi-ZPlay:", tunes)
 	z.ZiqueCtrl <- tunes
 }
 func (z *ZiquePlayer) Pause() {
 	RtCtrlChan <- 1
 }
 func (z *ZiquePlayer) Stop() {
-	fmt.Print("Stop")
+	log.Print("Midi Stop")
 	z.ZiqueCtrl <- 1
-	fmt.Println("..ping!")
+	log.Println("...ping!")
 }
 
 func (z *ZiquePlayer) mainLoop(Cmd chan interface{}) {
@@ -173,24 +173,24 @@ func (z *ZiquePlayer) mainLoop(Cmd chan interface{}) {
 	Playing := false
 	var passCount int
 	PlayingThread := func() {
-		fmt.Println("Start playing")
+		log.Println("Midi-Start playing")
 		wg.Add(1)
 		defer func() {
 			Playing = false
 			wg.Done()
-			fmt.Println("Exit playing")
+			log.Println("Midi-Exit playing")
 		}()
-		fmt.Println("Play:", set)
+		log.Println("Midi-Play:", set)
 		for iset, t := range set {
-			fmt.Println("Parse:", t.File)
+			log.Println("Midi-Parse:", t.File)
 			select {
 			case z.FeedBack <- t.File:
 			default:
 			}
 			partition, err := Parse(t.File)
-			fmt.Println("Parse:", err, len(partition.Part))
+			log.Println("Midi-Parse:", err, len(partition.Part))
 			if err != nil || len(partition.Part) == 0 {
-				fmt.Println(partition)
+				log.Println(partition)
 				break
 			}
 			count := t.Count
@@ -240,13 +240,13 @@ func (z *ZiquePlayer) mainLoop(Cmd chan interface{}) {
 			}
 
 		case cmd := <-Cmd:
-			fmt.Println("Player: Cmd received:", cmd)
+			log.Println("Midi-Player: Cmd received:", cmd)
 			switch v := cmd.(type) {
 			case MusicSet:
 				if Playing {
 					pl.PlayCtrl <- CPlayCtrl{CSTOP, "", 0.0}
 					Playing = false
-					fmt.Println("Player: Wg wait")
+					log.Println("Midi-Player: Wg wait")
 					wg.Wait()
 				}
 
@@ -260,19 +260,19 @@ func (z *ZiquePlayer) mainLoop(Cmd chan interface{}) {
 					pl.PlayCtrl <- CPlayCtrl{CSTOP, "", 0.0}
 					if Playing {
 						Playing = false
-						fmt.Println("Player: Wg wait")
+						log.Println("Midi-Player: Wg wait")
 						wg.Wait()
 					}
-					fmt.Println("Player: Exit playing thread")
+					log.Println("Midi-Player: Exit playing thread")
 					return
 				case 1:
 					if Playing {
 						pl.PlayCtrl <- CPlayCtrl{CSTOP, "", 0.0}
 						Playing = false
-						fmt.Println("Player: Wg wait")
+						log.Println("Midi-Player: Wg wait")
 						wg.Wait()
 					}
-					fmt.Println("Player: Stopped")
+					log.Println("Midi-Player: Stopped")
 
 				}
 			}

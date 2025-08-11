@@ -1,13 +1,16 @@
 package zdb
 
 import (
-	"fmt"
+	//	"fmt"
+	"log"
 	"os"
 	"path"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+
+	"github.com/py60800/tunedb/internal/util"
 )
 
 const (
@@ -77,16 +80,14 @@ func TuneDBNew() *TuneDB {
 	_, dbExists := GetModificationDate(DataBase)
 
 	cnx, err := gorm.Open(sqlite.Open(DataBase), gormConfig)
+	util.PanicOnError(err)
 
-	if err != nil {
-		panic(fmt.Errorf("Failed to open or create database : %v", err))
-	}
 	tuneDB = &TuneDB{cnx: cnx}
 	tuneDB.SchemaUpdate()
 	if !dbExists {
 		tuneDB.TuneKindUpdateAll(TuneKindDefaults)
 	}
-	fmt.Println("Database opened")
+	log.Println("Database opened")
 	return tuneDB
 
 }
