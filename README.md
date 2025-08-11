@@ -15,7 +15,7 @@ TuneDB is a desktop application  intended  initially to manage my own collection
 
 Linux users must build and install TuneDb from the source code (procedure described hereafter)
 
-Windows users can [download a prebuilt binary]() or [build it from the source](https://github.com/py60800/tunedb/blob/main/WINDOWS.md)
+Windows users can [download a prebuilt binary](Windows/TunedbWindows.zip) or [build it from the source](https://github.com/py60800/tunedb/blob/main/WINDOWS.md)
 
 
 ** Note that MP3 playing depends on your own collection MP3 files. **
