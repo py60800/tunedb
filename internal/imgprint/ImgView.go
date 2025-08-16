@@ -177,7 +177,7 @@ func (p *Printer) ToFile() {
 	p.toA4().SaveJPEG("img.jpg", 100)
 }
 func (p *Printer) SetImg(imgs []string) {
-
+	log.Println("Printer:", imgs)
 	if len(p.ImgList) > 0 {
 		for _, f := range p.ImgList {
 			os.Remove(f)
@@ -218,6 +218,7 @@ func (p *Printer) SetImg(imgs []string) {
 }
 
 func (p *Printer) MakeUI() {
+	log.Println("Printer Create")
 
 	// Main window ---------------------------
 	p.win, _ = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
@@ -287,7 +288,7 @@ func PrinterNew() *Printer {
 	p.printSettings, _ = gtk.PrintSettingsNew()
 	p.printSettings.LoadFile("printSettings.txt")
 
-	p.MakeUI()
+	//p.MakeUI()
 
 	log.Println("ImgPrint:" + p.printSettings.GetDefaultSource())
 	log.Println("ImgPrint:" + p.printSettings.GetPrinter())
@@ -296,6 +297,10 @@ func PrinterNew() *Printer {
 	return &p
 }
 func (p *Printer) Run(img []string) {
+	log.Println("Printer Run:", img)
+	if p.win == nil { // Delayed start
+		p.MakeUI()
+	}
 	p.SetImg(img)
 	p.win.ShowNow()
 }

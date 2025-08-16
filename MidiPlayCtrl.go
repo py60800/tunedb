@@ -33,9 +33,19 @@ type MidiPlayCtrl struct {
 	drum             *gtk.Scale
 	memoPlay         *gtk.Button
 
-	Zique *zique.ZiquePlayer
+	midiPlayer *zique.ZiquePlayer
 }
 
+func (pm *MidiPlayCtrl) Zique() *zique.ZiquePlayer {
+	if pm.midiPlayer == nil { // Delayed startup
+		var msg string
+		pm.midiPlayer, msg = zique.ZiquePlayerNew(ConfigBase, util.H.Get("MidiPort"))
+		if msg != "" {
+			Message(msg)
+		}
+	}
+	return pm.midiPlayer
+}
 func (pm *MidiPlayCtrl) Widget() gtk.IWidget {
 	return pm.menuButton
 }
@@ -57,16 +67,16 @@ func (pm *MidiPlayCtrl) SetInstrument(instrument string) {
 	}
 }
 func (pm *MidiPlayCtrl) Stop() {
-	pm.Zique.Stop()
+	pm.Zique().Stop()
 }
 func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm := &MidiPlayCtrl{}
 	pm.context = c
-	var msg string
-	pm.Zique, msg = zique.ZiquePlayerNew(ConfigBase, util.H.Get("MidiPort"))
-	if msg != "" {
-		WarnOnStart(msg)
-	}
+	/*	var msg string
+		pm.Zique, msg = zique.ZiquePlayerNew(ConfigBase, util.H.Get("MidiPort"))
+		if msg != "" {
+			WarnOnStart(msg)
+		}*/
 
 	pm.menuButton, _ = gtk.MenuButtonNew()
 	pm.menuButton.SetLabel("Midi Ctrl...")
@@ -97,7 +107,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	}
 	pm.instrument.Connect("changed", func(cb *gtk.ComboBoxText) {
 		v := cb.GetActiveText()
-		pm.Zique.SetPatch(v)
+		pm.Zique().SetPatch(v)
 	})
 	SetMargins(pm.instrument, 3, 3)
 	lInstrument.Add(pm.instrument)
@@ -112,7 +122,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 		pm.drumSelector.AppendText(k)
 	}
 	pm.drumSelector.Connect("changed", func(d *gtk.ComboBoxText) {
-		pm.Zique.SetDrumPattern(d.GetActiveText())
+		pm.Zique().SetDrumPattern(d.GetActiveText())
 	})
 	SetMargins(pm.drumSelector, 3, 3)
 	lDrumSelector.Add(pm.drumSelector)
@@ -131,7 +141,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	}
 	pm.swingSelector.Connect("changed", func(d *gtk.ComboBoxText) {
 		pm.swingCoeff.SetValue(1.0)
-		pm.Zique.SetSwingPattern(d.GetActiveText())
+		pm.Zique().SetSwingPattern(d.GetActiveText())
 
 	})
 	SetMargins(pm.swingSelector, 3, 3)
@@ -140,7 +150,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm.swingCoeff, _ = gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 2, 0.1)
 	pm.swingCoeff.SetValue(1.0)
 	pm.swingCoeff.Connect("value-changed", func(s *gtk.Scale) {
-		pm.Zique.AlterSwingPattern(s.GetValue())
+		pm.Zique().AlterSwingPattern(s.GetValue())
 	})
 	SetMargins(pm.swingCoeff, 3, 3)
 	lSwingBox.Add(pm.swingCoeff)
@@ -162,11 +172,11 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	velocityCoeff, _ := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 3.0, 0.1)
 	velocityCoeff.SetValue(1.0)
 	velocityCoeff.Connect("value-changed", func(s *gtk.Scale) {
-		pm.Zique.AlterVelocityPattern(s.GetValue())
+		pm.Zique().AlterVelocityPattern(s.GetValue())
 	})
 	pm.velocitySelector.Connect("changed", func(d *gtk.ComboBoxText) {
 		velocityCoeff.SetValue(1.0)
-		pm.Zique.SetVelocityPattern(d.GetActiveText())
+		pm.Zique().SetVelocityPattern(d.GetActiveText())
 	})
 	lVelocityBox.Add(velocityCoeff)
 
@@ -181,7 +191,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm.speed.SetInverted(true)
 	pm.speed.SetVExpand(true)
 	pm.speed.Connect("value-changed", func(sp *gtk.Scale) {
-		pm.Zique.SetTempo(int(sp.GetValue()))
+		pm.Zique().SetTempo(int(sp.GetValue()))
 
 	})
 	cursorGrid.AttachNextTo(pm.speed, lSpeed, gtk.POS_BOTTOM, 1, H)
@@ -193,7 +203,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm.volume.SetValue(80)
 	pm.volume.SetInverted(true)
 	pm.volume.Connect("value-changed", func(d *gtk.Scale) {
-		pm.Zique.SetMainVolume(int(d.GetValue()))
+		pm.Zique().SetMainVolume(int(d.GetValue()))
 	})
 	pm.volume.SetVExpand(true)
 	cursorGrid.AttachNextTo(pm.volume, lVolume, gtk.POS_BOTTOM, 1, H)
@@ -207,7 +217,7 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm.drum.SetVExpand(true)
 
 	pm.drum.Connect("value-changed", func(d *gtk.Scale) {
-		pm.Zique.SetDrumVolume(int(d.GetValue()))
+		pm.Zique().SetDrumVolume(int(d.GetValue()))
 	})
 	cursorGrid.AttachNextTo(pm.drum, lDrum, gtk.POS_BOTTOM, 1, H)
 
@@ -263,12 +273,12 @@ type WMetronome struct {
 func (c *WMetronome) Ticker() {
 	context := GetContext()
 	select {
-	case currentTune := <-context.midiPlayCtrl.Zique.FeedBack:
+	case currentTune := <-context.midiPlayCtrl.Zique().FeedBack:
 		if aTune := ActiveTune(); aTune != nil && aTune.Xml != currentTune {
 			tune := context.DB.TuneGetByXmlFile(currentTune)
 			context.LoadTune(&tune, true)
 		}
-	case tick := <-context.midiPlayCtrl.Zique.TickBack:
+	case tick := <-context.midiPlayCtrl.Zique().TickBack:
 		c.pendingEvent = make([]TickEvent, 0)
 		prev := 100 * time.Millisecond
 		c.PassCount = tick.PassCount

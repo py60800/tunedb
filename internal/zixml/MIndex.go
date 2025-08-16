@@ -103,5 +103,7 @@ func ComputeIndex(p *MPartition) string {
 }
 func ComputeIndexForFile(file string) string {
 	part, _ := Parse(file)
-	return ComputeIndex(&part)
+	index := ComputeIndex(&part)
+	log.Printf("Index for [%s] : %s\n", file, index)
+	return index
 }

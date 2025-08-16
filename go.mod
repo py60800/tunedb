@@ -22,6 +22,7 @@ require (
 	github.com/hookttg/svgparser v1.1.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/leemcloughlin/logfile v0.0.0-20201123203928-cff1c8a30a10 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/mozillazg/go-unidecode v0.2.0 // indirect
 	github.com/py60800/oto/v3 v3.0.1 // indirect

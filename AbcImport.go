@@ -2,18 +2,29 @@
 package main
 
 import (
-	"github.com/py60800/tunedb/internal/zdb"
-	"github.com/py60800/tunedb/internal/util"
+	//	"log"
+
 	"github.com/gotk3/gotk3/gtk"
-	"log"
+	//	"github.com/py60800/tunedb/internal/util"
+	"github.com/py60800/tunedb/internal/zdb"
 )
 
 type AbcImporter struct {
+	textView *gtk.TextView
+	importer *zdb.AbcImporter
 }
 
+func (l *AbcImporter) Start() error {
+	b, _ := l.textView.GetBuffer()
+	start, end := b.GetBounds()
+	txt, _ := b.GetText(start, end, true)
+	return l.importer.Start(txt)
+}
 func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 
-	l := &AbcImporter{}
+	l := &AbcImporter{
+		importer: zdb.NewAbcImporter(),
+	}
 
 	menuButton, _ := gtk.MenuButtonNew()
 	menuButton.SetLabel("AbcImport...")
@@ -25,53 +36,60 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 		popover.ShowAll()
 	})
 	popover.Add(grid)
-	textView, _ := gtk.TextViewNew()
-	textView.SetSizeRequest(100, 200)
+	l.textView, _ = gtk.TextViewNew()
+	l.textView.SetSizeRequest(100, 200)
 	is := 0
-	grid.Attach(textView, 0, 0, 8, 6)
-	is += 8
-	getText := func() string {
-		b, _ := textView.GetBuffer()
-		start, end := b.GetBounds()
-		txt, _ := b.GetText(start, end, true)
-		return txt
-	}
+	grid.Attach(l.textView, 0, 0, 6, 6)
+	is += 6
+
 	importB, _ := gtk.ButtonNewWithLabel("MuseScore Import")
 	importB.Connect("clicked", func() {
-		txt := getText()
-		log.Println("AbcImport Muse", util.STruncate(txt,80))
-		msg, _ := zdb.AbcImport(txt, false)
-		if msg != "" {
-			Message(msg)
+		err := l.Start()
+		if err != nil {
+			Message(err.Error())
 		}
+		msg, hasDup := l.importer.CheckDuplicates()
+		if hasDup {
+			msg += "Proceed ?"
+			if !MessageConfirm(msg) {
+				return
+			}
+		}
+		l.importer.MuseImport()
 		popover.Popdown()
 	})
 	importD, _ := gtk.ButtonNewWithLabel("Direct Import")
 	importD.Connect("clicked", func() {
-		txt := getText()
-		log.Println("AbcImport Direct", util.STruncate(txt,80))
-		msg, err := zdb.AbcImport(getText(), true)
-		if msg != "" {
-			Message(msg)
+		err := l.Start()
+		if err != nil {
+			Message(err.Error())
 		}
-		if err == nil {
-			c.TUpdate()
-			popover.Popdown()
+		msg, hasDup := l.importer.CheckDuplicates()
+		if hasDup {
+			msg += "Proceed ?"
+			if !MessageConfirm(msg) {
+				return
+			}
 		}
+		l.importer.DirectImport()
+		popover.Popdown()
 	})
 	clearB, _ := gtk.ButtonNewWithLabel("Clear")
 	clearB.Connect("clicked", func() {
-		b, _ := textView.GetBuffer()
+		b, _ := l.textView.GetBuffer()
 		b.SetText("")
 	})
+
 	cancelB, _ := gtk.ButtonNewWithLabel("Cancel")
 	cancelB.Connect("clicked", func() {
+		b, _ := l.textView.GetBuffer()
+		b.SetText("")
 		popover.Popdown()
 	})
-	grid.Attach(importB, 0, is, 2, 1)
-	grid.Attach(importD, 2, is, 2, 1)
-	grid.Attach(clearB, 4, is, 1, 1)
-	grid.Attach(cancelB, 5, is, 1, 1)
+	grid.Attach(importB, 0, is, 1, 1)
+	grid.Attach(importD, 1, is, 1, 1)
+	grid.Attach(clearB, 2, is, 1, 1)
+	grid.Attach(cancelB, 3, is, 1, 1)
 
 	return l, menuButton
 }

@@ -1,7 +1,10 @@
 ---
 helpers:
+  # Update MuseScore4 path according to actual path
+  # back slashes must be doubled 
   Mus4:    "c:\\Program Files\\MuseScore 4\\bin\\MuseScore4.exe"
-  Python:   "${HOME}/AppData/Local/Microsoft/WindowsApps/python3.exe"
+  #  Python:   "${HOME}/AppData/Local/Microsoft/WindowsApps/python3.exe"
+  Python: python
   MusEdit:   ${Mus4} ${File}
   Abc2XmlPy: ./context/abc2xml.py
   MusStyle1: ./context/svg.mss

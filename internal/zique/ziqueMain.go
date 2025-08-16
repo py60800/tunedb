@@ -82,7 +82,7 @@ func ZiquePlayerNew(context string, midiPort string) (*ZiquePlayer, string) {
 
 func (z *ZiquePlayer) init(context string, midiPort string) string {
 
-	InitPattern(context)
+	//	InitPattern(context)
 	if midiPort == "" {
 		midiPort = "Synth"
 	}
@@ -166,6 +166,7 @@ func (z *ZiquePlayer) Stop() {
 }
 
 func (z *ZiquePlayer) mainLoop(Cmd chan interface{}) {
+	log.Println("Midi start Midi Loop Ctrl")
 	var wg sync.WaitGroup
 	pl := MakePlayer("Dummy")
 	z.player = &pl

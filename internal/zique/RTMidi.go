@@ -80,6 +80,7 @@ func GetMidiSink(midiPort string) (func(rtmidi.Message) error, string) {
 }
 
 func RtMidiSink(midiPort string, bChan chan []byte, rt chan string) {
+	log.Println("Midi start RT Sink")
 	defer rtmidi.CloseDriver()
 	send, msg := GetMidiSink(midiPort)
 	rt <- msg
@@ -102,6 +103,7 @@ type RtMeasureTick struct {
 }
 
 func MidiSink(mchan chan SeqEvent, ctrlChan chan int, sendChan chan []byte, feedBack chan RtMeasureTick) {
+	log.Println("Midi start MidiSink")
 	defer func() {
 		close(sendChan)
 	}()

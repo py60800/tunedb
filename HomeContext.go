@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/leemcloughlin/logfile"
 	"github.com/py60800/tunedb/internal/zdb"
 )
 
@@ -39,8 +40,12 @@ func MakeHomeContext(baseDir string) {
 		panic(fmt.Errorf("Failed to select home directory : %v", err))
 	}
 	os.Mkdir("log", 0777)
-	logFile := path.Join("log", fmt.Sprintf("tunedb-%s.log", time.Now().Format("060102-150405")))
-	if fl, err := os.Create(logFile); err == nil {
+
+	// Set log file
+	lf := logfile.Defaults
+
+	lf.FileName = path.Join("log", fmt.Sprintf("tunedb-%s.log", time.Now().Format("060102-150405")))
+	if fl, err := logfile.New(&lf); err == nil {
 		log.SetOutput(fl)
 	}
 	log.Printf("TuneDB start %s %s\n", time.Now().Format("06/01/02-15:04:05"), baseDir)

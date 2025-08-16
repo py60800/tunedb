@@ -57,6 +57,7 @@ func (m *Mp3Player) selectContext(sampleRate int) *oto.Context {
 		m.sampleRate = sampleRate
 		return m.otoContext
 	}
+	log.Println("Oto Create Context for SR:", sampleRate)
 	op := &oto.NewContextOptions{
 		SampleRate:   sampleRate,
 		ChannelCount: 2,
@@ -108,6 +109,7 @@ func (m *Mp3Player) CurrentFile() string {
 	return m.file
 }
 func (m *Mp3Player) LoadFile(file string) (duration float64, err error) {
+	log.Println("Load MP3:", file)
 	if m.file == file {
 		return m.duration, nil
 	}
@@ -172,10 +174,10 @@ type spyReader struct {
 }
 
 func (spy *spyReader) readingThread() {
-	log.Println("Start Reader")
+	log.Println("MP3 Start Reader")
 	var rubberBand *Rubberband = nil
 	defer func() {
-		log.Println("Reader finished!")
+		log.Println("MP3 Reader finished!")
 		close(spy.dataChan)
 		if rubberBand != nil {
 			rubberBand.Delete()

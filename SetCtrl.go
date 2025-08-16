@@ -199,7 +199,7 @@ func MkSetPlayCtrl() (*SetPlayCtrl, gtk.IWidget) {
 
 	stop := MkButton("Stop", func() {
 		GetContext().metronome.MetronomeHide()
-		GetContext().midiPlayCtrl.Zique.Stop()
+		GetContext().midiPlayCtrl.Zique().Stop()
 
 	})
 	mainGrid.Attach(play, 0, is, 2, 1)
@@ -312,7 +312,7 @@ func (sp *SetPlayCtrl) play() {
 
 	c.metronome.MetronomeShow()
 	DelayedAction(sp.menuButton, 2*time.Second, func() {
-		GetContext().midiPlayCtrl.Zique.PlaySet(playSet)
+		GetContext().midiPlayCtrl.Zique().PlaySet(playSet)
 	})
 	sp.popo.Popdown()
 }

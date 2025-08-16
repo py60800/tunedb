@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 
 	"io/ioutil"
+	"log"
 	"os"
 	"path"
 	"strings"
@@ -158,4 +159,36 @@ func GetFileListR2(dir string, extension string, recursive bool) []FileInfo {
 		}
 	}
 	return res
+}
+
+// Cleanup temporary file
+func Cleanup() {
+	tmpDir := "tmp"
+	files, err := os.ReadDir(tmpDir)
+	if err != nil {
+		util.WarnOnError(err)
+		return
+	}
+	exts := map[string]int{
+		".abc": 0,
+		".xml": 0,
+		".svg": 0,
+	}
+	log.Println("Cleanup start")
+	count := 0
+	errC := 0
+	for _, file := range files {
+		fileName := file.Name()
+		if _, ok := exts[path.Ext(fileName)]; ok {
+			err := os.Remove(path.Join(tmpDir, fileName))
+			if err != nil {
+				log.Println("Remove error:", err)
+				errC++
+			} else {
+				count++
+			}
+		}
+	}
+	log.Printf("Cleanup %v files removed, %v errors\n", count, errC)
+
 }

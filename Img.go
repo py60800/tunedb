@@ -36,7 +36,7 @@ func (c *TImage) SelectAll() {
 	c.Image.QueueDraw()
 }
 
-func (c *TImage) DisplayImage(img *gtk.DrawingArea, cr *cairo.Context) {
+func (c *TImage) Draw(img *gtk.DrawingArea, cr *cairo.Context) {
 	Hd := img.GetAllocatedHeight()
 	Wd := img.GetAllocatedWidth()
 	tune := ActiveTune()
@@ -144,7 +144,7 @@ func (c *ZContext) MkImage() (*TImage, *gtk.Widget) {
 	})
 
 	imgCtrl.Image.Connect("draw", func(img *gtk.DrawingArea, cr *cairo.Context) {
-		imgCtrl.DisplayImage(img, cr)
+		imgCtrl.Draw(img, cr)
 	})
 	return imgCtrl, imgCtrl.Image.ToWidget()
 }

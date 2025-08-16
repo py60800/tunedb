@@ -143,6 +143,28 @@ func (db *TuneDB) PurgeMscz() {
 	purge.Close()
 	fpurge.Close()
 }
+func Radix(fileName string) string {
+	base := path.Base(fileName)
+	ext := path.Ext(base)
+	return strings.TrimSuffix(base, ext)
+}
+func UniqFileName(file string) string {
+	if _, ok := util.GetModificationDate(file); ok {
+		base := path.Base(file)
+		dir := path.Dir(file)
+		ext := path.Ext(base)
+		base = strings.TrimSuffix(base, ext)
+		var newFileName string
+		for i := 1; i < 100; i++ {
+			newFileName = path.Join(dir, fmt.Sprintf("%s-%d%s", base, i, ext))
+			if _, ok := util.GetModificationDate(newFileName); !ok {
+				break
+			}
+		}
+		return newFileName
+	}
+	return file
+}
 
 func (db *TuneDB) TuneImport(file string, kind string) string {
 	repo, k := guessTarget(kind)
@@ -150,9 +172,11 @@ func (db *TuneDB) TuneImport(file string, kind string) string {
 	if !strings.HasSuffix(file, ".mscz") {
 		return "Wrong file type"
 	}
-	if _, ok := util.GetModificationDate(dst); ok {
-		return dst + "File exists!"
-	}
+	/*
+		if _, ok := util.GetModificationDate(dst); ok {
+			return dst + "File exists!"
+		}*/
+	dst = UniqFileName(dst)
 	if err := util.CopyFile(file, dst); err != nil {
 		return "Failed to copy file"
 	}
@@ -193,6 +217,9 @@ func (db *TuneDB) TuneRelocate(id int, target string) error {
 		return fmt.Errorf("No tune")
 	}
 	newFile := path.Join(target, path.Base(tune.File))
+	newFile = UniqFileName(newFile)
+	radix := Radix(newFile)
+
 	if err := os.Rename(tune.File, newFile); err != nil {
 		return err
 	}
@@ -205,12 +232,16 @@ func (db *TuneDB) TuneRelocate(id int, target string) error {
 	r := db.cnx.Model(&tune).Update("file", newFile)
 	warnOnDbError(r)
 
-	newXml := path.Join(xmlTarget, path.Base(tune.Xml))
+	newXml := path.Join(xmlTarget, radix+path.Ext(tune.Xml))
 	os.Rename(tune.Xml, newXml)
 	r = db.cnx.Model(&tune).Update("xml", newXml)
 	warnOnDbError(r)
-
-	newImg := path.Join(imgTarget, path.Base(tune.Img))
+	var newImg string
+	if strings.HasSuffix(tune.Img, "-1.svg") {
+		newImg = path.Join(imgTarget, radix+"-1.svg")
+	} else {
+		newImg = path.Join(imgTarget, radix+path.Ext(tune.Img))
+	}
 	os.Rename(tune.Img, newImg)
 	r = db.cnx.Model(&tune).Update("img", newImg)
 	warnOnDbError(r)

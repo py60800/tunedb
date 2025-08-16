@@ -45,10 +45,10 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 	grid.Attach(entry, 0, 0, 8, 8)
 	baseReloc := ""
 	needReloc := false
-	tuneId := 0
 	reloc := MkButton("Relocate", func() {
-		GetContext().DB.TuneRelocate(tuneId, baseReloc)
-		GetContext().tuneCtx.Refresh()
+		c := GetContext()
+		c.DB.TuneRelocate(c.ActiveTune.ID, baseReloc)
+		c.LoadTuneByID(c.ActiveTune.ID, true, true)
 	})
 	close := MkButton("Close", func() {
 		popo.Hide()
@@ -88,9 +88,9 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 			fmt.Fprintf(s, "Rehearsal Date: %v\n", tune.LastRehearsal)
 			fmt.Fprintf(s, "Fun Level:%v\n", tune.Fun)
 			fmt.Fprintf(s, "Hide: %v\n", tune.Hide)
+			fmt.Fprintf(s, "Index: %v\n", tune.BreathnachCode)
 
 			buffer.SetText(s.String())
-			tuneId = tune.ID
 			baseReloc, needReloc = GetContext().DB.TuneNeedsReloc(tune.File, tune.Kind)
 			reloc.SetSensitive(needReloc)
 		} else {

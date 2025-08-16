@@ -400,7 +400,7 @@ func (c *ZContext) MkTuneSelector() (*TuneSelector, gtk.IWidget) {
 
 	bPrev, _ := gtk.ButtonNewWithLabel("<<")
 	bPrev.Connect("clicked", func() {
-		ts.context.midiPlayCtrl.Zique.Stop()
+		ts.context.midiPlayCtrl.Zique().Stop()
 		ts.ChangeFile(-1)
 
 	})
@@ -408,7 +408,7 @@ func (c *ZContext) MkTuneSelector() (*TuneSelector, gtk.IWidget) {
 
 	bNext, _ := gtk.ButtonNewWithLabel(">>")
 	bNext.Connect("clicked", func() {
-		ts.context.midiPlayCtrl.Zique.Stop()
+		ts.context.midiPlayCtrl.Zique().Stop()
 		ts.ChangeFile(+1)
 	})
 	addGrid(bNext, 1)

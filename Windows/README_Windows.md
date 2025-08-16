@@ -34,5 +34,7 @@ Some samples are provided. The samples.zip file can be extracted in "%HOME%\Musi
 ## Start the application
 launch "tunedb.exe" from installation directory
 
-Don't forget to read the Quick Start Manual (Manual.pdf) to understand how to use TuneDb
+**Issue** Sometimes TuneDb hangs at startup on Windows, quit the app when asked by Windows and restart (if you have any clue, you're welcome...)
+
+**Don't forget to read the Quick Start Manual (Manual.pdf) to understand how to use TuneDb**
 

@@ -10,6 +10,7 @@ import (
 	"github.com/py60800/tunedb/internal/svgtab"
 	"github.com/py60800/tunedb/internal/util"
 	"github.com/py60800/tunedb/internal/zdb"
+	"github.com/py60800/tunedb/internal/zique"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -75,14 +76,25 @@ func (c *ZContext) ScanMp3() {
 	OpWait("Please Wait", msgC)
 
 }
+
+var msgRelocate = `
+Message relocation aims to move files to
+their proper location according to their kind.
+It can break the database.
+Backup files before processing.
+Confirm relocation ?
+`
+
 func (c *ZContext) MassRelocate() {
-	msgC := make(chan string)
-	go func() {
-		msgC <- "Mass Relocate"
-		c.DB.MassRelocate(msgC)
-		msgC <- ""
-	}()
-	OpWait("Please Wait", msgC)
+	if MessageConfirm(msgRelocate) {
+		msgC := make(chan string)
+		go func() {
+			msgC <- "Mass Relocate"
+			c.DB.MassRelocate(msgC)
+			msgC <- ""
+		}()
+		OpWait("Please Wait", msgC)
+	}
 
 }
 
@@ -120,6 +132,11 @@ func (c *ZContext) MkMenu() {
 	appMenuGroup.Append(statEntry)
 	statEntry.Connect("activate", func() {
 		c.DisplayStats()
+	})
+	cleanup, _ := gtk.MenuItemNewWithLabel("Clean Up Temporary Files")
+	appMenuGroup.Append(cleanup)
+	cleanup.Connect("activate", func() {
+		zdb.Cleanup()
 	})
 
 	quitEntry, _ := gtk.MenuItemNewWithLabel("Quit")
@@ -177,7 +194,7 @@ func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
 func Quit() {
 	log.Println("TuneDb Quit")
 	GetContext().midiPlayCtrl.Stop()
-	GetContext().midiPlayCtrl.Zique.Kill()
+	GetContext().midiPlayCtrl.Zique().Kill()
 	GetContext().mp3Player.Stop()
 	gtk.MainQuit()
 }
@@ -247,7 +264,7 @@ func (c *ZContext) MkPlayCtrl() {
 	midiPlay.Connect("clicked", func() {
 		c.Stop()
 		if tune := c.ActiveTune; tune != nil && tune.ID != 0 && len(tune.Xml) > 0 {
-			c.midiPlayCtrl.Zique.Play(tune.Xml)
+			c.midiPlayCtrl.Zique().Play(tune.Xml)
 			c.metronome.MetronomeShow()
 		}
 	})
@@ -288,6 +305,8 @@ func (c *ZContext) RefreshTune() {
 var StartupMessages []string
 
 func OnceCheck() {
+	GetContext().tuneSelector.Refresh()
+
 	for _, m := range StartupMessages {
 		log.Println("Startup message:", m)
 		Message(m)
@@ -298,7 +317,9 @@ func WarnOnStart(msg string) {
 	StartupMessages = append(StartupMessages, msg)
 }
 
-func (c *ZContext) MakeUI() {
+func (c *ZContext) StartUserInterface() {
+	log.Println("Gtk Init")
+	gtk.Init(nil)
 	var w gtk.IWidget
 
 	// Main window ---------------------------
@@ -438,11 +459,14 @@ func (c *ZContext) MakeUI() {
 	})
 	display, _ := gdk.DisplayGetDefault()
 	c.clip, _ = gtk.ClipboardGetForDisplay(display, gdk.SELECTION_CLIPBOARD)
+	c.printer = imgprint.PrinterNew()
+
 	c.win.AddTickCallback(func(widget *gtk.Widget, frameClock *gdk.FrameClock) bool {
 		OnceCheck()
 		return false
 	})
-
+	log.Println("GTK Main")
+	gtk.Main()
 }
 
 // ****************************************************************************
@@ -456,8 +480,6 @@ func main() {
 	flag.StringVar(&workingDir, "d", "", "Working directory")
 	flag.Parse()
 	MakeHomeContext(workingDir)
-	log.Println("Gtk Init")
-	gtk.Init(nil)
 
 	c := GetContext()
 	log.Println("Open database")
@@ -466,6 +488,10 @@ func main() {
 	util.HelperInit(ConfigBase)
 	log.Println("Param init")
 	zdb.ParamInit(c.DB)
+	if msg, err := zdb.CheckHelpers(); err != nil {
+		WarnOnStart(msg)
+	}
+	zique.InitPattern("context")
 
 	c.sourceRepositories = c.DB.SourceRepositoryGetAll()
 	log.Println("Mscz Content Update")
@@ -475,14 +501,5 @@ func main() {
 	c.mp3Collection = zdb.MP3CollectionNew(c.DB)
 	c.mp3Player = player.Mp3PlayerNew()
 	log.Println("Create user interface")
-	c.MakeUI()
-	c.tuneSelector.Refresh()
-	c.printer = imgprint.PrinterNew()
-	if msg, err := zdb.CheckHelpers(); err != nil {
-		WarnOnStart(msg)
-	}
-
-	log.Println("Gtk Main")
-	gtk.Main()
-
+	c.StartUserInterface()
 }
