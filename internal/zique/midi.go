@@ -7,7 +7,9 @@ import (
 )
 
 type MStart struct {
-	MeasureId string
+	MeasureId         string
+	MeasureLength     int
+	MeasureLengthTune int
 }
 type MTimeEv struct {
 	MLength  int
@@ -49,7 +51,7 @@ type PTempoChange struct {
 }
 
 func (t PTempoChange) String() string {
-	return fmt.Sprintf("Tempo:", t.Value)
+	return fmt.Sprintf("Tempo:%v", t.Value)
 }
 func (c PChordOn) String() string {
 	return fmt.Sprintf("ChordOn (%v)", c.Velocity)

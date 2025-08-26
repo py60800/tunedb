@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"fmt"
+	"fmt"
 
 	"github.com/py60800/tunedb/internal/util"
 
@@ -100,7 +100,7 @@ func (c *ZContext) MkImage() (*TImage, *gtk.Widget) {
 
 	imgCtrl.Image.SetHExpand(true)
 	imgCtrl.Image.SetVExpand(true)
-	imgCtrl.Image.AddEvents(int(gdk.BUTTON_PRESS_MASK | gdk.BUTTON_MOTION_MASK | gdk.BUTTON_RELEASE_MASK))
+	imgCtrl.Image.AddEvents(int(gdk.BUTTON_PRESS_MASK | gdk.BUTTON_MOTION_MASK | gdk.BUTTON_RELEASE_MASK | gdk.KEY_PRESS_MASK))
 	imgCtrl.Image.Connect("button-press-event", func(da *gtk.DrawingArea, ev *gdk.Event) bool {
 		evb := gdk.EventButtonNewFromEvent(ev)
 		imgCtrl.ButtonPress = true
@@ -140,6 +140,11 @@ func (c *ZContext) MkImage() (*TImage, *gtk.Widget) {
 		imgCtrl.Y1 = max(imgCtrl.Y1, Y)
 		imgCtrl.selectAll = false
 		da.QueueDraw()
+		return false
+	})
+	imgCtrl.Image.Connect("key-press-event", func(da *gtk.DrawingArea, ev *gdk.Event) bool {
+		evb := gdk.EventKeyNewFromEvent(ev)
+		fmt.Println("Event:", evb)
 		return false
 	})
 

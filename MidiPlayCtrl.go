@@ -268,62 +268,89 @@ type WMetronome struct {
 
 	PassCount int
 	MeasureId string
+
+	start       bool
+	ziquePlayer *zique.ZiquePlayer
+	tickId      int
+
+	previousShort bool
 }
 
 func (c *WMetronome) Ticker() {
 	context := GetContext()
+	if !c.ziquePlayer.IsPlaying() {
+		c.MetronomeHide()
+		return
+	}
 	select {
-	case currentTune := <-context.midiPlayCtrl.Zique().FeedBack:
+	case currentTune := <-c.ziquePlayer.FeedBack:
 		if aTune := ActiveTune(); aTune != nil && aTune.Xml != currentTune {
 			tune := context.DB.TuneGetByXmlFile(currentTune)
 			context.LoadTune(&tune, true)
 		}
-	case tick := <-context.midiPlayCtrl.Zique().TickBack:
-		c.pendingEvent = make([]TickEvent, 0)
+	case tick := <-c.ziquePlayer.TickBack:
+
 		prev := 100 * time.Millisecond
 		c.PassCount = tick.PassCount
 		c.MeasureId = tick.MeasureId
-		XD := time.Duration(tick.XmlDivisions)
-		delay := tick.TickTime * XD
-		switch tick.BeatType {
-		case 1:
-			delay = tick.TickTime * XD * 4
-		case 2:
-			//			undefined
-			delay = tick.TickTime * XD * 2
-		case 4:
-			delay = tick.TickTime * XD
-		case 8:
-			delay = tick.TickTime * XD / 2
-		case 16:
-			delay = tick.TickTime * XD / 4
 
-		}
-		count := tick.Beats
+		beats := tick.Beats
+		delay := time.Duration(tick.MeasureLengthTune) * tick.TickTime / time.Duration(beats)
+
 		now := time.Now()
-		for i := 0; i < count*2; i++ {
-			tickN := i + 1
-			c.pendingEvent = append(c.pendingEvent, TickEvent{
-				date:      now.Add(time.Duration(tickN)*delay - prev),
-				TickStep:  tickN % count,
-				TickCount: count,
-			})
-		}
-		cancelTime := now.Add(time.Second)
-		if len(c.pendingEvent) > 0 {
-			cancelTime = c.pendingEvent[len(c.pendingEvent)-1].date.Add(time.Second)
-		}
-		c.pendingEvent = append(c.pendingEvent, TickEvent{
-			date:      cancelTime,
-			TickStep:  0,
-			TickCount: 0,
-		})
 
+		if tick.MeasureLength < tick.MeasureLengthTune && c.start {
+			// Pickup
+			beatTime := tick.MeasureLengthTune / tick.Beats
+			revPe := make([]TickEvent, 0)
+			tickN := 0
+			for t := tick.MeasureLengthTune; t >= tick.MeasureLength; t -= beatTime {
+				revPe = append(revPe, TickEvent{
+					date:      now.Add(time.Duration(t-tick.MeasureLength)*tick.TickTime - prev),
+					TickStep:  tickN,
+					TickCount: beats,
+				})
+				tickN = (tickN + beats - 1) % beats
+			}
+			c.pendingEvent = make([]TickEvent, 0)
+			for i := range revPe {
+				c.pendingEvent = append(c.pendingEvent, revPe[len(revPe)-(i+1)])
+			}
+		} else {
+			if tick.MeasureLength == tick.MeasureLengthTune || !c.previousShort {
+				c.pendingEvent = make([]TickEvent, 0)
+				for i := 0; i < beats*2; i++ {
+					tickN := i + 1
+					c.pendingEvent = append(c.pendingEvent, TickEvent{
+						date:      now.Add(time.Duration(tickN)*delay - prev),
+						TickStep:  tickN % beats,
+						TickCount: beats,
+					})
+				}
+				c.previousShort = tick.MeasureLength < tick.MeasureLengthTune
+			} else {
+				c.previousShort = false
+			}
+
+		}
+		c.start = false
+
+		/*		cancelTime := now.Add(time.Second)
+				if len(c.pendingEvent) > 0 {
+					cancelTime = c.pendingEvent[len(c.pendingEvent)-1].date.Add(time.Second)
+				}
+				c.pendingEvent = append(c.pendingEvent, TickEvent{
+					date:      cancelTime,
+					TickStep:  0,
+					TickCount: 0,
+				})
+		*/
 		c.nextEvent = 0
 		// Force start
 		c.TickStep = 0
 		c.Metronome.QueueDraw()
 	default:
+
 	}
 	if c.nextEvent < len(c.pendingEvent) && time.Now().After(c.pendingEvent[c.nextEvent].date) {
 		tickEvent := c.pendingEvent[c.nextEvent]
@@ -337,9 +364,28 @@ func (c *WMetronome) Ticker() {
 
 func (c *WMetronome) MetronomeHide() {
 	c.TickCount = 0
+	if c.tickId == 0 {
+		c.Metronome.RemoveTickCallback(c.tickId)
+		c.tickId = 0
+	}
 	c.Metronome.QueueDraw()
 }
 func (c *WMetronome) MetronomeShow() {
+	c.ziquePlayer = GetContext().midiPlayCtrl.Zique()
+	tickChan := c.ziquePlayer.TickBack
+	for len(tickChan) > 0 {
+		<-tickChan
+	}
+	if c.tickId != 0 {
+		c.Metronome.RemoveTickCallback(c.tickId)
+		c.tickId = 0
+	}
+	c.tickId = c.Metronome.AddTickCallback(func(widget *gtk.Widget, frameClock *gdk.FrameClock) bool {
+		c.Ticker()
+		return true
+	})
+	c.previousShort = false
+	c.start = true
 
 }
 func (c *WMetronome) Draw(da *gtk.DrawingArea, cr *cairo.Context) {
@@ -437,10 +483,6 @@ func (ctx *ZContext) MkMetro() (*WMetronome, gtk.IWidget) {
 	})
 
 	c.pendingEvent = make([]TickEvent, 0)
-	c.Metronome.AddTickCallback(func(widget *gtk.Widget, frameClock *gdk.FrameClock) bool {
-		c.Ticker()
-		return true
-	})
 
 	return c, c.Metronome
 }

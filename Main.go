@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/py60800/tunedb/internal/imgprint"
 	"github.com/py60800/tunedb/internal/player"
@@ -11,6 +12,8 @@ import (
 	"github.com/py60800/tunedb/internal/util"
 	"github.com/py60800/tunedb/internal/zdb"
 	"github.com/py60800/tunedb/internal/zique"
+
+	"debug/buildinfo"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/gtk"
@@ -139,6 +142,22 @@ func (c *ZContext) MkMenu() {
 		zdb.Cleanup()
 	})
 
+	buildInfo, _ := gtk.MenuItemNewWithLabel("Build info")
+	appMenuGroup.Append(buildInfo)
+	buildInfo.Connect("activate", func() {
+		exe, _ := os.Executable()
+		data, err := buildinfo.ReadFile(exe)
+		var msg string
+		if err != nil {
+			msg = "BuildInfo:" + err.Error()
+		} else {
+			msg = data.String()
+		}
+		log.Println(msg)
+
+		Message(msg)
+	})
+
 	quitEntry, _ := gtk.MenuItemNewWithLabel("Quit")
 	appMenuGroup.Append(quitEntry)
 	quitEntry.Connect("activate", func() {
@@ -193,9 +212,12 @@ func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
 
 func Quit() {
 	log.Println("TuneDb Quit")
-	GetContext().midiPlayCtrl.Stop()
-	GetContext().midiPlayCtrl.Zique().Kill()
-	GetContext().mp3Player.Stop()
+	c := GetContext()
+	c.tuneSelector.SaveContext()
+	c.midiPlayCtrl.Stop()
+	c.midiPlayCtrl.Zique().Kill()
+	c.mp3Player.Stop()
+	util.RemovePidFile()
 	gtk.MainQuit()
 }
 func (c *ZContext) SetHeader(change bool) {
@@ -238,35 +260,28 @@ func (c *ZContext) TUpdate() {
 	}()
 	OpWait("Please Wait", msgC)
 	c.Refresh()
-	c.tuneSelector.Refresh()
+	c.tuneSelector.Refresh(false)
 	c.DB.PurgeMscz()
 }
 func (c *ZContext) Stop() {
 	c.midiPlayCtrl.Stop()
 	c.mp3Player.Stop()
 	c.metronome.MetronomeHide()
+}
+func (c *ZContext) PlayMidi() {
+	c.Stop()
+	if tune := c.ActiveTune; tune != nil && tune.ID != 0 && len(tune.Xml) > 0 {
+		c.metronome.MetronomeShow()
+		c.midiPlayCtrl.Zique().Play(tune.Xml)
+	}
 
 }
 func (c *ZContext) MkPlayCtrl() {
-	Css := `button#bplay, button#bpause, button#bstop { 
-	             font-size: 32px ;
-				color: red ;
-				}
-			 viewport { 
-	             border-color: black ;
-				}`
-
-	CssP, _ := gtk.CssProviderNew()
-	CssP.LoadFromData(Css)
 	c.playCtrl, _ = gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 1)
 	//------------------------------------------- Play Control
 	midiPlay, _ := gtk.ButtonNewWithLabel("Play:Midi")
 	midiPlay.Connect("clicked", func() {
-		c.Stop()
-		if tune := c.ActiveTune; tune != nil && tune.ID != 0 && len(tune.Xml) > 0 {
-			c.midiPlayCtrl.Zique().Play(tune.Xml)
-			c.metronome.MetronomeShow()
-		}
+		c.PlayMidi()
 	})
 	c.playCtrl.Add(midiPlay)
 	c.mp3PlayButton, _ = gtk.ButtonNewWithLabel("Play:MP3")
@@ -305,7 +320,7 @@ func (c *ZContext) RefreshTune() {
 var StartupMessages []string
 
 func OnceCheck() {
-	GetContext().tuneSelector.Refresh()
+	GetContext().tuneSelector.Refresh(true)
 
 	for _, m := range StartupMessages {
 		log.Println("Startup message:", m)
@@ -366,11 +381,12 @@ func (c *ZContext) StartUserInterface() {
 	c.cursor.SetSizeRequest(400, 30)
 
 	c.MkPlayCtrl()
+
 	firstLine.AttachNextTo(c.cursor, w, gtk.POS_RIGHT, 3, 1)
 	firstLine.AttachNextTo(c.playCtrl, c.cursor, gtk.POS_RIGHT, 8, 1)
 
 	cpy := MkButton("^C", func() {
-		if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
+		if tune := c.ActiveTune; tune != nil {
 			c.clip.SetText(tune.Title)
 		}
 	})
@@ -466,6 +482,12 @@ func (c *ZContext) StartUserInterface() {
 		return false
 	})
 	log.Println("GTK Main")
+	/*
+		c.win.AddEvents(int(gdk.EVENT_KEY_PRESS))
+		c.win.Connect("key-press-event", func(w *gtk.Window, evt *gdk.Event) {
+			fmt.Printf("Evt: %T %v\n", evt, *evt)
+		})*/
+
 	gtk.Main()
 }
 
@@ -479,6 +501,7 @@ func main() {
 	flag.BoolVar(&WithXchg, "x", false, "Tune Xchg")
 	flag.StringVar(&workingDir, "d", "", "Working directory")
 	flag.Parse()
+
 	MakeHomeContext(workingDir)
 
 	c := GetContext()

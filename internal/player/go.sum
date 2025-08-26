@@ -5,6 +5,11 @@ github.com/hajimehoshi/go-mp3 v0.3.4/go.mod h1:fRtZraRFcWb0pu7ok0LqyFhCUrPeMsGRS
 github.com/hajimehoshi/oto/v2 v2.3.1/go.mod h1:seWLbgHH7AyUMYKfKYT9pg7PhUu9/SisyJvNTT+ASQo=
 github.com/py60800/oto/v3 v3.0.1 h1:1FeqnyfE/Y/dZRwxYKl4QjYvaWO9mSSdMD2PFrxG5wE=
 github.com/py60800/oto/v3 v3.0.1/go.mod h1:ZA8kpn1UiMnmZV0Qfm0oNxLkCms1DAT9T2ijJrXvr9A=
+github.com/py60800/tunedb/internal/util v0.0.0-20250816055548-0d044c3f59d9 h1:6FLR4CnUE5CsyK4AcyKE88RUzrWG+xgI6q3Lvma7vgI=
+github.com/py60800/tunedb/internal/util v0.0.0-20250816055548-0d044c3f59d9/go.mod h1:ZJNhEQUv+cjduV1CsP0SlBkjbrZu2rW70bbfoDQOSPI=
 golang.org/x/sys v0.0.0-20220712014510-0a85c31ab51e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.34.0 h1:H5Y5sJ2L2JRdyv7ROF1he/lPdvFsd0mJHFw2ThKHxLA=
 golang.org/x/sys v0.34.0/go.mod h1:BJP2sWEmIv4KK5OTEluFJCKSidICx8ciO85XgH3Ak8k=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
+gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=

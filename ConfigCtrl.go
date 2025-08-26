@@ -78,7 +78,7 @@ func mkConfigurationWindow(c *ZContext) *SourceRepositoryConfigurator {
 				ID:          d["_ID"].(int),
 			}
 		}
-		log.Println("Save Repository:",sr)
+		log.Println("Save Repository:", sr)
 		c.DB.SourceRepositoryUpdateAll(sr)
 		c.sourceRepositories = c.DB.SourceRepositoryGetAll()
 		cfg.win.Hide()
@@ -146,13 +146,13 @@ func (c *ZContext) TuneKindConfiguration() {
 			res := make([]zdb.TuneKind, 0, len(data))
 			for _, d := range data {
 				res = append(res, zdb.TuneKind{
-					Kind:  d["Kind"].(string),
+					Kind:  (d["Tune Kind"]).(string),
 					Tempo: d["Tempo"].(int),
 					ID:    d["_ID"].(int),
 				})
 			}
 			c.DB.TuneKindUpdateAll(res)
-			c.tuneSelector.UpdateTK()
+			c.tuneSelector.fillTuneKind()
 			c.tuneCtx.UpdateTuneKind()
 			tkc.win.Hide()
 		})

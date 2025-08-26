@@ -10,7 +10,6 @@ import (
 
 	// _ "gitlab.com/gomidi/midi/v2/drivers/portmididrv" // autoregisters driver
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
-	//	"sync"
 )
 
 func (n PNoteOn) GetRtMidiEvent() []byte {
@@ -79,42 +78,51 @@ func GetMidiSink(midiPort string) (func(rtmidi.Message) error, string) {
 	panic("Can't locate midi port")
 }
 
-func RtMidiSink(midiPort string, bChan chan []byte, rt chan string) {
-	log.Println("Midi start RT Sink")
-	defer rtmidi.CloseDriver()
-	send, msg := GetMidiSink(midiPort)
-	rt <- msg
-	for {
-		data, ok := <-bChan
-		if !ok {
-			break
-		}
-		if len(data) > 0 {
-			if send != nil {
-				send(data)
-			}
-		}
-	}
-}
-
 type RtMeasureTick struct {
-	Time      time.Duration
-	MeasureId string
+	Time              time.Duration
+	MeasureId         string
+	MeasureLength     int
+	MeasureLengthTune int
 }
 
-func MidiSink(mchan chan SeqEvent, ctrlChan chan int, sendChan chan []byte, feedBack chan RtMeasureTick) {
-	log.Println("Midi start MidiSink")
-	defer func() {
-		close(sendChan)
-	}()
-	silence := func() {
-		for _, m := range rtmidi.SilenceChannel(-1) {
-			sendChan <- m
-		}
+type midiSink struct {
+	send func(rtmidi.Message) error
+}
+
+func newMidiSink(midiPort string) (*midiSink, string) {
+	ms := &midiSink{}
+	send, msg := GetMidiSink(midiPort)
+	ms.send = send
+	return ms, msg
+}
+
+func (ms *midiSink) Send(data []byte) {
+	if len(data) == 0 || ms.send == nil {
+		return
 	}
-	silence()
-	sendChan <- rtmidi.ProgramChange(uint8(DefaultChannel), uint8(MainInstrument))
-	sendChan <- rtmidi.ProgramChange(uint8(ChordChannel), uint8(ChordInstrument))
+	err := ms.send(data)
+	if err != nil {
+		log.Println("Midi Sink:", err)
+	}
+}
+func (ms *midiSink) Silence() {
+	for _, m := range rtmidi.SilenceChannel(-1) {
+		ms.Send(m)
+	}
+}
+
+func MidiSink(mchan chan SeqEvent, midiPort string, rtStartMessage chan string, ctrlChan chan int, feedBack chan RtMeasureTick) {
+	log.Println("Midi start MidiSink")
+	defer log.Println("Midi SInk Shutdown")
+
+	defer rtmidi.CloseDriver()
+
+	ms, msg := newMidiSink(midiPort)
+	rtStartMessage <- msg
+
+	ms.Silence()
+	ms.Send(rtmidi.ProgramChange(uint8(DefaultChannel), uint8(MainInstrument)))
+	ms.Send(rtmidi.ProgramChange(uint8(ChordChannel), uint8(ChordInstrument)))
 
 	TickTime := time.Minute / time.Duration(Tempo*MasterDivisions)
 
@@ -132,7 +140,12 @@ func MidiSink(mchan chan SeqEvent, ctrlChan chan int, sendChan chan []byte, feed
 				TickTime = time.Minute / time.Duration(Tempo*MasterDivisions)
 			case MStart:
 				select {
-				case feedBack <- RtMeasureTick{Time: TickTime, MeasureId: v.MeasureId}:
+				case feedBack <- RtMeasureTick{
+					Time:              TickTime,
+					MeasureId:         v.MeasureId,
+					MeasureLength:     v.MeasureLength,
+					MeasureLengthTune: v.MeasureLengthTune,
+				}:
 				default:
 				}
 
@@ -149,22 +162,22 @@ func MidiSink(mchan chan SeqEvent, ctrlChan chan int, sendChan chan []byte, feed
 				time.Sleep(wait)
 			}
 			clock = ntime
-			sendChan <- evt.Event.GetRtMidiEvent()
+			ms.Send(evt.Event.GetRtMidiEvent())
 			lastEvent = evt
 
 		case cmd := <-ctrlChan:
 			switch cmd {
 			case 0:
-				silence()
+				ms.Silence()
 				return
 			case 1: // Pause
-				silence()
+				ms.Silence()
 				cmd = <-ctrlChan
 				if cmd == 0 {
 					return
 				}
 			case 2: // Stop
-				silence()
+				ms.Silence()
 				return
 			case 3: // resume pause
 

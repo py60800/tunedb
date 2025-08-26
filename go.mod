@@ -3,15 +3,16 @@ module github.com/py60800/tunedb
 go 1.23.4
 
 require (
-	github.com/gotk3/gotk3 v0.6.3
-	github.com/py60800/tunedb/internal/imgprint v0.0.0-20250804123008-48838e6d4baa
-	github.com/py60800/tunedb/internal/player v0.0.0-20250804123008-48838e6d4baa
-	github.com/py60800/tunedb/internal/search v0.0.0-20250804123008-48838e6d4baa
-	github.com/py60800/tunedb/internal/svgtab v0.0.0-20250810192600-9270042c20d6
-	github.com/py60800/tunedb/internal/util v0.0.0-20250804123008-48838e6d4baa
-	github.com/py60800/tunedb/internal/zdb v0.0.0-20250810192600-9270042c20d6
-	github.com/py60800/tunedb/internal/zique v0.0.0-20250810192600-9270042c20d6
-	github.com/py60800/tunedb/internal/zixml v0.0.0-20250804123008-48838e6d4baa
+	github.com/gotk3/gotk3 v0.6.4
+	github.com/leemcloughlin/logfile v0.0.0-20201123203928-cff1c8a30a10
+	github.com/py60800/tunedb/internal/imgprint v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/player v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/search v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/svgtab v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/util v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/zdb v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/zique v0.0.0-20250816055548-0d044c3f59d9
+	github.com/py60800/tunedb/internal/zixml v0.0.0-20250816055548-0d044c3f59d9
 )
 
 require (
@@ -22,7 +23,6 @@ require (
 	github.com/hookttg/svgparser v1.1.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/leemcloughlin/logfile v0.0.0-20201123203928-cff1c8a30a10 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/mozillazg/go-unidecode v0.2.0 // indirect
 	github.com/py60800/oto/v3 v3.0.1 // indirect
@@ -35,3 +35,5 @@ require (
 	gorm.io/driver/sqlite v1.5.7 // indirect
 	gorm.io/gorm v1.25.12 // indirect
 )
+
+replace github.com/gotk3/gotk3 => github.com/gotk3/gotk3 v0.6.4.1

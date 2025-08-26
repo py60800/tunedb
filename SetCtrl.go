@@ -291,6 +291,7 @@ func (sp *SetPlayCtrl) SaveCurrentTuneSet() {
 }
 
 func (sp *SetPlayCtrl) play() {
+	GetContext().Stop()
 	tunes := sp.listStore.GetValues()
 	if len(tunes) == 0 {
 		return
@@ -310,9 +311,10 @@ func (sp *SetPlayCtrl) play() {
 		c.midiPlayCtrl.SetTempo(sp.tempo.GetValueAsInt(), tune.Kind)
 	}
 
-	c.metronome.MetronomeShow()
+	//
 	DelayedAction(sp.menuButton, 2*time.Second, func() {
 		GetContext().midiPlayCtrl.Zique().PlaySet(playSet)
+		c.metronome.MetronomeShow()
 	})
 	sp.popo.Popdown()
 }

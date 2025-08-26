@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/leemcloughlin/logfile"
+	"github.com/py60800/tunedb/internal/util"
 	"github.com/py60800/tunedb/internal/zdb"
 )
 
@@ -39,6 +40,8 @@ func MakeHomeContext(baseDir string) {
 	if err != nil {
 		panic(fmt.Errorf("Failed to select home directory : %v", err))
 	}
+	util.CheckPid()
+
 	os.Mkdir("log", 0777)
 
 	// Set log file

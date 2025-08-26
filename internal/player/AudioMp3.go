@@ -17,26 +17,20 @@ import (
 )
 
 type Mp3Player struct {
-	file        string
-	isPlaying   bool
-	stopRequest bool
+	playLock sync.Mutex
+
+	file string
 
 	reader  *os.File
 	decoder *mp3.Decoder
 
 	sampleSize int
 	sampleRate int
-	duration   float64
 	channels   int
-	cmd        chan int
-
-	progress atomic.Value
-
-	wgPlay      sync.WaitGroup
-	doneChannel chan int
+	//	cmd        chan int
 
 	otoContext *oto.Context
-	player     *oto.Player
+	otoPlayer  *oto.Player
 
 	from float64
 	to   float64
@@ -44,10 +38,54 @@ type Mp3Player struct {
 	fromIdx      int
 	toIdx        int
 	bufferLength int
-	timeRatio    float64
-	pitchScale   float64
 
 	context map[int]*oto.Context
+
+	stopRequest atomic.Bool
+	isPlaying   atomic.Bool
+
+	dataLock sync.Mutex
+
+	progress   float64
+	timeRatio  float64
+	pitchScale float64
+	duration   float64
+}
+
+func (m *Mp3Player) GetSpeedAndPitch() (float64, float64) {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	return m.timeRatio, m.pitchScale
+}
+func (m *Mp3Player) SetTimeRatio(timeRatio float64) {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	m.timeRatio = timeRatio
+}
+func (m *Mp3Player) SetPitchScale(pitchScale float64) {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	m.pitchScale = pitchScale
+}
+func (m *Mp3Player) GetProgress() float64 {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	return m.progress
+}
+func (m *Mp3Player) setProgress(p float64) {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	m.progress = p
+}
+func (m *Mp3Player) GetDuration() float64 {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	return m.duration
+}
+func (m *Mp3Player) setDuration(d float64) {
+	m.dataLock.Lock()
+	defer m.dataLock.Unlock()
+	m.duration = d
 }
 
 func (m *Mp3Player) selectContext(sampleRate int) *oto.Context {
@@ -57,17 +95,18 @@ func (m *Mp3Player) selectContext(sampleRate int) *oto.Context {
 		m.sampleRate = sampleRate
 		return m.otoContext
 	}
-	log.Println("Oto Create Context for SR:", sampleRate)
+	log.Println("Oto Create Context for SampleRate:", sampleRate)
 	op := &oto.NewContextOptions{
 		SampleRate:   sampleRate,
 		ChannelCount: 2,
 		//		Format:       oto.FormatFloat32LE,
 		Format: oto.FormatSignedInt16LE,
 	}
+
 	otoCtx, readyChan, err := oto.NewContext(op)
 	util.PanicOnError(err)
-
 	<-readyChan
+
 	m.otoContext = otoCtx
 	m.sampleRate = sampleRate
 	m.context[sampleRate] = otoCtx
@@ -76,44 +115,34 @@ func (m *Mp3Player) selectContext(sampleRate int) *oto.Context {
 
 func Mp3PlayerNew() *Mp3Player {
 	m := &Mp3Player{
-		cmd:         make(chan int, 1),
-		doneChannel: make(chan int, 1),
-		file:        "",
-		from:        0.0,
-		to:          0.0,
-		duration:    1.0,
-		timeRatio:   1.0,
-		pitchScale:  1.0,
+		//cmd:         make(chan int, 1),
+		//doneChannel: make(chan int, 1),
+		file:       "",
+		from:       0.0,
+		to:         0.0,
+		duration:   1.0,
+		timeRatio:  1.0,
+		pitchScale: 1.0,
+		progress:   0,
+		context:    make(map[int]*oto.Context),
 	}
-	m.progress.Store(0.0)
-	m.context = make(map[int]*oto.Context)
-
-	m.progress.Store(0.0)
 	return m
+}
 
-}
-func (m *Mp3Player) SetTimeRatio(timeRatio float64) {
-	m.timeRatio = timeRatio
-}
-func (m *Mp3Player) SetPitchScale(pitchScale float64) {
-	m.pitchScale = pitchScale
-}
-func (m *Mp3Player) GetProgress() float64 {
-	v := m.progress.Load()
-	return v.(float64)
-}
 func (m *Mp3Player) IsPlaying() bool {
-	return m.isPlaying
+	return m.isPlaying.Load()
 }
-func (m *Mp3Player) CurrentFile() string {
-	return m.file
-}
+
 func (m *Mp3Player) LoadFile(file string) (duration float64, err error) {
+	m.Stop() // Before lock
+	m.playLock.Lock()
+	defer m.playLock.Unlock()
+
 	log.Println("Load MP3:", file)
 	if m.file == file {
-		return m.duration, nil
+		return m.GetDuration(), nil
 	}
-	m.Stop()
+
 	if m.reader != nil {
 		m.reader.Close()
 	}
@@ -137,12 +166,10 @@ func (m *Mp3Player) LoadFile(file string) (duration float64, err error) {
 	m.channels = 2 // Hardcoded in mp3 decoder
 	m.sampleSize = 4
 	m.bufferLength = int(m.decoder.Length())
-	m.duration = m.idxToTime(m.bufferLength)
-	return m.duration, nil
+	duration = m.idxToTime(m.bufferLength)
+	m.setDuration(duration)
+	return duration, nil
 
-}
-func (m *Mp3Player) Duration() float64 {
-	return m.duration
 }
 
 const (
@@ -159,21 +186,18 @@ func (m *Mp3Player) timeToIdx(t float64) int {
 }
 
 type spyReader struct {
-	m          *Mp3Player
-	p          *oto.Player
-	r          io.Reader
-	idx        int
-	idxTo      int
-	timeRatio  float64
-	pitchScale float64
-	wg         sync.WaitGroup
+	m     *Mp3Player
+	p     *oto.Player
+	r     io.Reader
+	idx   int
+	idxTo int
 
 	dataChan chan *[]byte
 	data     *[]byte
 	idata    int
 }
 
-func (spy *spyReader) readingThread() {
+func (spy *spyReader) readingThread(stopRequest *atomic.Bool) {
 	log.Println("MP3 Start Reader")
 	var rubberBand *Rubberband = nil
 	defer func() {
@@ -182,13 +206,12 @@ func (spy *spyReader) readingThread() {
 		if rubberBand != nil {
 			rubberBand.Delete()
 		}
-		spy.wg.Done()
 	}()
-	spy.timeRatio = spy.m.timeRatio
-	spy.pitchScale = spy.m.pitchScale
-	const SampleRequired = 2048
 
-	for finished := false; !finished && !spy.m.stopRequest; {
+	const SampleRequired = 2048
+	previousTimeRatio := -1.0
+	previousPitchScale := -1.0
+	for finished := false; !finished && !stopRequest.Load(); {
 		buffer := make([]byte, SampleRequired*spy.m.sampleSize)
 		// Read data
 		for iRead := 0; iRead < len(buffer); {
@@ -204,22 +227,23 @@ func (spy *spyReader) readingThread() {
 		}
 		spy.idx += len(buffer)
 		finished = spy.idx >= spy.idxTo
-		spy.m.progress.Store(float64(spy.m.idxToTime(spy.idx)))
+		spy.m.setProgress(float64(spy.m.idxToTime(spy.idx)))
 
-		if spy.m.timeRatio == 1.0 && spy.m.pitchScale == 1.0 {
+		spyTimeRatio, spyPitchScale := spy.m.GetSpeedAndPitch()
+
+		if spyTimeRatio == 1.0 && spy.m.pitchScale == 1.0 {
 			spy.dataChan <- &buffer
 		} else {
 			if rubberBand == nil {
-				spy.timeRatio, spy.pitchScale = spy.m.timeRatio, spy.m.pitchScale
-				rubberBand = NewRubberband(spy.m.sampleRate, spy.m.channels, spy.timeRatio, spy.pitchScale)
+				rubberBand = NewRubberband(spy.m.sampleRate, spy.m.channels, spyTimeRatio, spyPitchScale)
 			}
-			if spy.timeRatio != spy.m.timeRatio {
-				spy.timeRatio = spy.m.timeRatio
-				rubberBand.SetTimeRatio(spy.timeRatio)
+			if spyTimeRatio != previousTimeRatio {
+				rubberBand.SetTimeRatio(spyTimeRatio)
+				previousTimeRatio = spyTimeRatio
 			}
-			if spy.pitchScale != spy.m.pitchScale {
-				spy.pitchScale = spy.m.pitchScale
-				rubberBand.SetPitchScale(spy.pitchScale)
+			if spyPitchScale != previousPitchScale {
+				rubberBand.SetPitchScale(spyPitchScale)
+				previousPitchScale = spyPitchScale
 			}
 			result := rubberBand.ProcessI16(buffer, spy.m.channels)
 			spy.dataChan <- &result
@@ -229,14 +253,6 @@ func (spy *spyReader) readingThread() {
 }
 
 func (spy *spyReader) Read(buffer []byte) (int, error) {
-	/*	for i := range buffer {
-			var ok bool
-			if buffer[i], ok = <-spy.m.dataChannel; !ok {
-				return 0, io.EOF
-			}
-		}
-		return len(buffer), nil
-	*/
 	i := 0
 	for i = 0; i < len(buffer); {
 		if spy.data != nil {
@@ -257,8 +273,7 @@ func (spy *spyReader) Read(buffer []byte) (int, error) {
 	return i, nil
 }
 
-func (m *Mp3Player) _play() {
-	m.stopRequest = false
+func (m *Mp3Player) singlePlay() {
 	m.decoder.Seek(int64(m.fromIdx), 0)
 	spy := &spyReader{
 		m:        m,
@@ -270,22 +285,27 @@ func (m *Mp3Player) _play() {
 		idata:    0,
 	}
 
-	m.player = m.otoContext.NewPlayer(spy)
-	spy.p = m.player
-	m.player.SetBufferSize(4096) // ~0.1 second
-	m.progress.Store(float64(m.idxToTime(m.fromIdx)))
+	m.otoPlayer = m.otoContext.NewPlayer(spy)
+	spy.p = m.otoPlayer
+	m.otoPlayer.SetBufferSize(4096) // ~0.1 second
+	m.setProgress(float64(m.idxToTime(m.fromIdx)))
 
+	// Start reading thread
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		spy.wg.Add(1)
-		spy.readingThread()
+		spy.readingThread(&m.stopRequest)
+		wg.Done()
 	}()
-	m.player.Play()
-	for m.player.IsPlaying() {
-		time.Sleep(100 * time.Millisecond)
-	}
-	m.player.Close()
-	spy.wg.Wait()
-	m.doneChannel <- 0
+
+	m.otoPlayer.Play()
+
+	wg.Wait()
+	m.otoPlayer.Close()
+
+}
+func (m *Mp3Player) stopRequested() bool {
+	return m.stopRequest.Load()
 }
 func (m *Mp3Player) play(From float64, To float64, playMode int) {
 	if m.file == "" {
@@ -297,44 +317,28 @@ func (m *Mp3Player) play(From float64, To float64, playMode int) {
 		m.toIdx = m.bufferLength
 	}
 
-	go m._play()
-
-	for {
-		select {
-		case <-m.cmd:
-			//m.player.Close()
-			<-m.doneChannel
+	for !m.stopRequested() {
+		m.singlePlay()
+		if playMode == PMPlayOnce {
 			return
-		case <-m.doneChannel:
-			switch playMode {
-			case PMPlayOnce:
-				return
-			case PMPlayRepeat:
-				time.Sleep(500 * time.Millisecond)
-				go m._play()
-			}
 		}
+		time.Sleep(500 * time.Millisecond)
 	}
 }
+
 func (m *Mp3Player) Stop() {
-	m.stopRequest = true
-	select {
-	case m.cmd <- 0:
-	default:
-	}
-	m.wgPlay.Wait()
+	m.stopRequest.Store(true)
 }
 func (m *Mp3Player) Play(From float64, To float64, playMode int) {
 	m.Stop()
-	m.progress.Store(0.0)
-	m.isPlaying = true
+	m.setProgress(0.0)
+	m.isPlaying.Store(true)
 	go func() {
-		m.wgPlay.Add(1)
-		for len(m.cmd) > 0 {
-			<-m.cmd
-		}
+		m.playLock.Lock()
+		defer m.playLock.Unlock()
+		m.isPlaying.Store(true)
+		m.stopRequest.Store(false)
 		m.play(From, To, playMode)
-		m.isPlaying = false
-		m.wgPlay.Done()
+		m.isPlaying.Store(false)
 	}()
 }

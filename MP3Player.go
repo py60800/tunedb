@@ -194,7 +194,7 @@ func (p *Mp3PlayWidget) CursorDraw(da *gtk.DrawingArea, cr *cairo.Context) {
 	cr.Stroke()
 	cr.SetSourceRGB(255, 0, 0)
 	cr.SetLineWidth(1.0)
-	duration := p.Player().Duration()
+	duration := p.Player().GetDuration()
 	if duration < 1 {
 		return
 	}
@@ -221,7 +221,7 @@ func (m *Mp3PlayWidget) play(from, to float64, mode int) {
 		m.tickCbId = 0
 	}
 	m.prevPos = 36000.0
-	duration := m.Player().Duration()
+	duration := m.Player().GetDuration()
 
 	m.setDuration(duration)
 	if to < 0 {
@@ -325,7 +325,7 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 	pgrid(stop, 1)
 	lSpeed, _ := gtk.LabelNew("S:")
 	pgrid(lSpeed, 1)
-	m.speed, _ = gtk.SpinButtonNewWithRange(0.5, 2.0, 0.01)
+	m.speed, _ = gtk.SpinButtonNewWithRange(0.25, 2.0, 0.01)
 	m.speed.Connect("value-changed", func(sb *gtk.SpinButton) {
 		m.Player().SetTimeRatio(1.0 / sb.GetValue())
 	})
@@ -376,7 +376,7 @@ func Mp3PlayWidgetNew(signalMarkerChange func(), mainCursor *gtk.DrawingArea) (*
 		evb := gdk.EventButtonNewFromEvent(ev)
 		if evb.Type() == 4 {
 			w := da.GetAllocatedWidth()
-			start := (evb.X() * m.Player().Duration()) / float64(w)
+			start := (evb.X() * m.Player().GetDuration()) / float64(w)
 			m.play(start, 0.0, player.PMPlayOnce)
 			return true
 		}
@@ -469,7 +469,7 @@ func (m *Mp3PlayWidget) SelectFile(mp3file *zdb.MP3File, from, to float64) {
 		m.file = ""
 		m.setDuration(0.5)
 	}
-	if m.file != "" && m.file != m.Player().CurrentFile() {
+	if m.file != "" {
 		m.Duration, _ = m.Player().LoadFile(m.file)
 	}
 	m.setDuration(m.Duration)

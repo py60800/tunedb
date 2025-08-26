@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+
 	"github.com/py60800/tunedb/internal/util"
 )
 
@@ -165,7 +166,7 @@ func (m *Mixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		var e MHarmony
 		err = d.DecodeElement(&e, &start)
 		m.Elem = e
-	case "print", "clef":
+	case "print", "clef", "direction":
 		m.Elem = nil
 		d.Skip()
 		return nil
@@ -182,6 +183,7 @@ func (m *Mixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 type MMeasure struct {
 	Id       string  `xml:"number,attr"`
 	Contents []Mixed `xml:",any"`
+	length   int     // computed
 }
 
 type MAttributes struct {
@@ -210,6 +212,10 @@ func (m *AMixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 		err = d.DecodeElement(&e, &start)
 		m.Elem = e
 	case "clef":
+		m.Elem = nil
+		d.Skip()
+		return nil
+	case "direction":
 		m.Elem = nil
 		d.Skip()
 		return nil
@@ -318,10 +324,12 @@ func Parse(fileName string) (MPartition, error) {
 	err = xml.Unmarshal(byteValue, &partition)
 	util.WarnOnError(err)
 	partition.NormalizeDivisions(MasterDivisions)
+	//fmt.Println(partition)
 	return partition, nil
 
 }
 
+/*
 func (m *MMeasure) Length() int {
 	d := 0
 	for _, el := range m.Contents {
@@ -338,3 +346,4 @@ func (m *MMeasure) Length() int {
 func (p *MPart) ComputeMLength() (int, int, int) {
 	return p.Measures[0].Length(), p.Measures[1].Length(), p.Measures[len(p.Measures)-1].Length()
 }
+*/

@@ -7,6 +7,8 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/py60800/tunedb/internal/util"
@@ -24,17 +26,18 @@ type CPlayCtrl struct {
 }
 
 type Tick struct {
-	Beats        int
-	BeatType     int
-	XmlDivisions int
-	TickTime     time.Duration
-	MeasureId    string
-	PassCount    int
+	Beats             int
+	BeatType          int
+	XmlDivisions      int
+	TickTime          time.Duration
+	MeasureLength     int
+	MeasureLengthTune int
+	MeasureId         string
+	PassCount         int
 }
 
 const (
-	CSTOP = iota
-	CDRUM
+	CDRUM = iota
 	CVELOCITY
 	CCHORD
 	CSWING
@@ -46,11 +49,16 @@ type NTrail struct {
 	tickOf uint32
 }
 type Player struct {
-	Name           string
-	XmlDivisions   int
-	MeasLength     int
-	MeasLengthTick int
-	KeyAlter       map[byte]int
+	locker      sync.Mutex
+	stopRequest atomic.Bool
+
+	Name         string
+	XmlDivisions int
+
+	MeasLength         int
+	PreviousMeasLength int
+	MeasLengthTick     int
+	KeyAlter           map[byte]int
 
 	TuneMeasureLength int
 
@@ -65,10 +73,8 @@ type Player struct {
 
 	Velocity []int
 
-	Sequence []SeqEvent
-
-	AuxSequence []SeqEvent
-
+	Sequence     []SeqEvent
+	AuxSequence  []SeqEvent
 	CurrentChord EChord
 
 	MeasSeq     []uint32
@@ -79,16 +85,14 @@ type Player struct {
 	DrumPattern     []Beat
 
 	PlayCtrl chan CPlayCtrl
+
+	passCount int
 }
 
 func (p Player) String() string {
 	return fmt.Sprintf("(%v, %v, %v, %v)", p.Name, p.XmlDivisions, p.Clock, len(p.Sequence))
 }
-func (p *Player) MeasureLength() int {
-	t := (p.XmlDivisions * 4) / p.BeatType
-	return p.Beats * t
-}
-func (p *Player) ComputeSwingFactor() {
+func (p *Player) computeSwingFactor() {
 	sw := make([]int, p.MeasLength)
 	if len(p.SwingPattern) == 0 || p.MeasLength == 0 || p.MeasLength != p.TuneMeasureLength {
 		return
@@ -104,7 +108,7 @@ func (p *Player) ComputeSwingFactor() {
 	p.SwingFactor = sw
 }
 
-func (p *Player) AddSwing(s SeqEvent) SeqEvent {
+func (p *Player) addSwing(s SeqEvent) SeqEvent {
 	if len(p.SwingFactor) > 0 {
 		nTick := uint32(int(s.Tick) +
 			p.SwingFactor[(int(s.Tick-p.MeasStart))%len(p.SwingFactor)])
@@ -114,19 +118,19 @@ func (p *Player) AddSwing(s SeqEvent) SeqEvent {
 	}
 	return s
 }
-func (p *Player) PurgeAuxSequence() {
-	p.PushEvent(SeqEvent{p.Clock, DummyEvent{}})
+func (p *Player) purgeAuxSequence() {
+	p.pushEvent(SeqEvent{p.Clock, DummyEvent{}})
 	chordPurged := false
 	drumPurged := false
 	for _, auxEvent := range p.AuxSequence {
 		switch v := auxEvent.Event.(type) {
 		case *PChordOff:
 			for _, n := range v.Notes {
-				RtMidiChan <- p.AddSwing(SeqEvent{auxEvent.Tick, PNoteOff{n, ChordChannel}})
+				RtMidiChan <- p.addSwing(SeqEvent{auxEvent.Tick, PNoteOff{n, ChordChannel}})
 			}
 			chordPurged = true
 		case PTickOff:
-			RtMidiChan <- p.AddSwing(auxEvent)
+			RtMidiChan <- p.addSwing(auxEvent)
 			drumPurged = true
 		}
 		if chordPurged && drumPurged {
@@ -135,7 +139,7 @@ func (p *Player) PurgeAuxSequence() {
 	}
 	p.AuxSequence = p.AuxSequence[:0]
 }
-func (p *Player) PushEvent(s SeqEvent) {
+func (p *Player) pushEvent(s SeqEvent) {
 	i := 0
 	for i < len(p.AuxSequence) && p.AuxSequence[i].Tick <= s.Tick {
 		auxEvent := p.AuxSequence[i]
@@ -147,21 +151,21 @@ func (p *Player) PushEvent(s SeqEvent) {
 				for _, note := range cp {
 					mn := p.CurrentChord.Key + note
 					Velocity := (ChordVelocity * v.Velocity) / 100
-					RtMidiChan <- p.AddSwing(SeqEvent{auxEvent.Tick, PNoteOn{mn, Velocity, ChordChannel}})
+					RtMidiChan <- p.addSwing(SeqEvent{auxEvent.Tick, PNoteOn{mn, Velocity, ChordChannel}})
 					relatedChordOff.Notes = append(relatedChordOff.Notes, mn)
 				}
 			}
 		case *PChordOff:
 			for _, n := range v.Notes {
-				RtMidiChan <- p.AddSwing(SeqEvent{auxEvent.Tick, PNoteOff{n, ChordChannel}})
+				RtMidiChan <- p.addSwing(SeqEvent{auxEvent.Tick, PNoteOff{n, ChordChannel}})
 			}
 		default:
-			RtMidiChan <- p.AddSwing(p.AuxSequence[i])
+			RtMidiChan <- p.addSwing(p.AuxSequence[i])
 		}
 		i++
 
 	}
-	s = p.AddSwing(s)
+	s = p.addSwing(s)
 
 	if i > 0 {
 		p.AuxSequence = p.AuxSequence[i:]
@@ -204,8 +208,8 @@ func (pm *MPart) Attributes() (int, int, int) {
 	}
 	return div, beat, beatType
 }
-func MakePlayer(name string) Player {
-	var p Player
+func MakePlayer(name string) *Player {
+	p := &Player{}
 	p.Name = name
 	p.Sequence = make([]SeqEvent, 0, 10000)
 	p.AuxSequence = make([]SeqEvent, 0, 100)
@@ -226,7 +230,7 @@ func (p *Player) PartInit(pm *MPart) {
 	p.XmlDivisions, p.Beats, p.BeatType = pm.Attributes()
 }
 
-func (p *Player) XmlDuration2MidiDuration(d int) uint32 {
+func (p *Player) xmlDuration2MidiDuration(d int) uint32 {
 	return uint32(d * MasterDivisions / p.XmlDivisions)
 }
 
@@ -247,7 +251,7 @@ func (p *PIterator) Done() error {
 	}
 	return nil
 }
-func (p *PIterator) IsStartMeasure() bool {
+func (p *PIterator) IsMeasureStart() bool {
 	return p.j == 0 && p.i < len(p.mp.Measures)
 }
 func (p *PIterator) MeasureIndex() int {
@@ -282,10 +286,7 @@ func (p *Player) GetVelocity(iMes int) int {
 	if iMes < len(p.Velocity) {
 		v = p.Velocity[iMes]
 	}
-	v = (v * Velocity) / 100
-	if v > 127 {
-		v = 127
-	}
+	v = min(127, v*Velocity/100)
 	return v
 }
 func (p *Player) ComputeVelocity() {
@@ -329,9 +330,9 @@ func (n MNote) Process(p *Player) {
 					}
 					k := MidiKeyInt(step, octave)
 					ev := PEvent(PNoteOn{k, (p.GetVelocity(int(p.Clock-p.MeasStart)) * rn.RelVelocity) / 100, DefaultChannel})
-					p.PushEvent(SeqEvent{p.Clock, ev})
+					p.pushEvent(SeqEvent{p.Clock, ev})
 					p.Clock += uint32(rn.Duration)
-					p.PushEvent(SeqEvent{p.Clock - 1, PNoteOff{k, DefaultChannel}})
+					p.pushEvent(SeqEvent{p.Clock - 1, PNoteOff{k, DefaultChannel}})
 					t += rn.Duration
 				}
 				if t != int(n.Duration) {
@@ -348,17 +349,17 @@ func (n MNote) Process(p *Player) {
 				mn := p.KeyToInt(n.Step, n.Octave-1, n.Alter)
 				if n.Notations.Tied.Type != "stop" {
 					ev := PEvent(PNoteOn{mn, p.GetVelocity(int(p.Clock - p.MeasStart)), DefaultChannel})
-					p.PushEvent(SeqEvent{p.Clock, ev})
+					p.pushEvent(SeqEvent{p.Clock, ev})
 				}
-				p.Clock += p.XmlDuration2MidiDuration(n.Duration)
+				p.Clock += p.xmlDuration2MidiDuration(n.Duration)
 				if n.Notations.Tied.Type != "start" {
-					p.PushEvent(SeqEvent{p.Clock - 1, PNoteOff{mn, DefaultChannel}})
+					p.pushEvent(SeqEvent{p.Clock - 1, PNoteOff{mn, DefaultChannel}})
 				}
 			}
 		}
 
 	} else {
-		p.Clock += p.XmlDuration2MidiDuration(n.Duration)
+		p.Clock += p.xmlDuration2MidiDuration(n.Duration)
 
 	}
 
@@ -383,30 +384,16 @@ func (d MTime) Process(p *Player) {
 		panic("Internal Error => Failed to Normalize tempo")
 	}
 	p.ComputeVelocity()
-	p.ComputeSwingFactor()
+	p.computeSwingFactor()
 
-	p.PushEvent(SeqEvent{p.Clock, MTimeEv{p.MeasLength, p.Beats, p.BeatType}})
+	p.pushEvent(SeqEvent{p.Clock, MTimeEv{p.MeasLength, p.Beats, p.BeatType}})
 }
 
 func (k MKey) Process(p *Player) {
 	//	Nothing to do
 }
-
-func (p *Player) ActualMeasureLength(m *MMeasure) int {
-	MeasLength := 0
-	for _, el := range m.Contents {
-		switch v := el.Elem.(type) {
-		case MNote:
-			MeasLength += int((v.Duration * MasterDivisions) / p.XmlDivisions)
-		}
-	}
-	return MeasLength
-
-}
-func (p *Player) processCmd(C CPlayCtrl) bool {
+func (p *Player) processCmd(C CPlayCtrl) {
 	switch C.Cmd {
-	case CSTOP:
-		return false
 	case CDRUM:
 		p.DrumPattern = GetDrumPattern(C.Param)
 	case CSWING:
@@ -414,7 +401,7 @@ func (p *Player) processCmd(C CPlayCtrl) bool {
 		for i := range p.SwingPattern {
 			p.SwingPattern[i] = p.SwingPattern[i] * C.Coeff
 		}
-		p.ComputeSwingFactor()
+		p.computeSwingFactor()
 	case CVELOCITY:
 		p.VelocityPattern = GetVelocityPattern(C.Param)
 		// Get min max
@@ -425,100 +412,129 @@ func (p *Player) processCmd(C CPlayCtrl) bool {
 	default:
 		log.Println("Unimplemented:", C)
 	}
-	return true
 }
 
 func (p *Player) ComputeTuneMeasureLength(fp MPart) int {
-	ml := make(map[int]int)
-	for i := 0; i < 8 && i < len(fp.Measures); i++ {
-		mLength := p.ActualMeasureLength(&fp.Measures[i])
-		if n, ok := ml[mLength]; ok {
-			ml[mLength] = n + 1
-		} else {
-			ml[mLength] = 1
-		}
-	}
 	mx := 0
-	mlx := 0
-	for k, n := range ml {
-		if n > mx {
-			mx = n
-			mlx = k
-		}
+	for i := 0; i < 4 && i < len(fp.Measures); i++ {
+		mx = max(mx, fp.Measures[i].length)
 	}
-
-	return mlx
+	return mx
 }
-
-func (p *Player) PlayTune(fp MPart, barSignal int, callBack func()) int {
+func (p *Player) stopRequested() bool {
+	return p.stopRequest.Load()
+}
+func (p *Player) Stop() {
+	p.stopRequest.Store(true)
+}
+func (p *Player) playTune(fp MPart, barSignal int, callBack func()) int {
 	log.Println("MidiPlay:", len(fp.Measures))
+	p.stopRequest.Store(false)
+
+	barCount := 0
+	PassNumber := 1
+	iter := fp.CreateIterator()
+
 	if p.Clock == 0 {
+		// First tune or first pass
 		p.PartInit(&fp)
 		p.TuneMeasureLength = p.ComputeTuneMeasureLength(fp)
 
 	} else {
+
+		// Process tune junction !
+
+		p.PreviousMeasLength = p.MeasLength
+		lastMeasureIsClean := p.TuneMeasureLength == p.PreviousMeasLength
+		missingDuration := p.TuneMeasureLength - p.PreviousMeasLength
+
+		//
 		p.TuneMeasureLength = p.ComputeTuneMeasureLength(fp)
-		lastMeasDuration := int(p.Clock - p.MeasStart)
-
 		p.PartInit(&fp)
-		FirstMeasLength := p.ActualMeasureLength(&(fp.Measures[0]))
-		MeasureLength := p.ActualMeasureLength(&(fp.Measures[1]))
-		FirstMeasLength %= MeasureLength
 
-		switch {
-		case lastMeasDuration+FirstMeasLength == MeasureLength:
-			log.Printf("Raccord Type 1!! lm:%v, fm:%v, ml:%v\n", lastMeasDuration, FirstMeasLength, MeasureLength)
-		case lastMeasDuration == FirstMeasLength && FirstMeasLength == MeasureLength:
-			log.Printf("Raccord Type 2!! lm:%v, fm:%v, ml:%v\n", lastMeasDuration, FirstMeasLength, MeasureLength)
-		case lastMeasDuration+FirstMeasLength < MeasureLength:
-			// Transient Measure requires completion
-			delta := MeasureLength - (lastMeasDuration + FirstMeasLength)
-			p.Clock += uint32(delta)
-		case lastMeasDuration+FirstMeasLength > MeasureLength:
-			delta := (lastMeasDuration + FirstMeasLength) % MeasureLength
-			p.Clock -= uint32(delta)
-			log.Printf("Raccord Zarbi!! LastM:%v, FirstM:%v, MLength:%v (%v)\n", lastMeasDuration, FirstMeasLength, MeasureLength, delta)
-		default:
-			log.Println("Unexpected Measure config\n", lastMeasDuration, FirstMeasLength, MeasureLength)
+		FirstMeasLength := fp.Measures[0].length
+		cleanStart := FirstMeasLength == p.TuneMeasureLength
 
+		if lastMeasureIsClean {
+			if cleanStart {
+				// Perfect match => nothing to do
+				log.Println("Midi: clean junction")
+			} else {
+				// Ignore pickup
+				log.Println("Midi: Skip pickup")
+				for {
+					_, err := iter.Next()
+					if err != nil {
+						return -1
+					}
+					if iter.IsMeasureStart() {
+						break
+					}
+				}
+			}
+		} else {
+			if cleanStart {
+				// Last Measure was incomplete => Add Silence
+				log.Println("Midi: Incomplete Meas && CleanStart")
+				p.Clock += uint32(missingDuration)
+			} else {
+				combinedDuration := p.PreviousMeasLength + FirstMeasLength
+				switch {
+				case combinedDuration == p.TuneMeasureLength:
+					log.Println("Midi: Perfect junction")
+				case combinedDuration < p.TuneMeasureLength:
+					log.Println("Midi: Add missing rest:", p.TuneMeasureLength-combinedDuration)
+					p.Clock += uint32(p.TuneMeasureLength - combinedDuration)
+				default: // combined junction too long
+					log.Println("Midi: Drop pickup && add rest")
+					for {
+						_, err := iter.Next()
+						if err != nil {
+							return -1
+						}
+						if iter.IsMeasureStart() {
+							break
+						}
+						p.Clock += uint32(missingDuration)
+					}
+
+				}
+			}
 		}
-
 	}
-	barCount := 0
-	PassNumber := 1
-	iter := fp.CreateIterator()
 	RestartPoint := iter
 	Replay := false
 
 loop:
-	for {
+	for !p.stopRequested() {
+		// Process pending commands
 		select {
 		case cmd := <-p.PlayCtrl:
-			if !p.processCmd(cmd) {
-				return -1
-			}
+			p.processCmd(cmd)
 		default:
 		}
-		if iter.IsStartMeasure() || Replay {
-			{
-				p.MNoteLength = make([]NTrail, 0, 10)
-			}
-			p.PurgeAuxSequence()
-			actualMeasureLength := p.ActualMeasureLength(iter.CurrentMeasure())
-			p.MeasLength = actualMeasureLength
+
+		if iter.IsMeasureStart() || Replay {
+
+			p.MNoteLength = make([]NTrail, 0, 10)
+			p.purgeAuxSequence()
+			p.MeasLength = iter.CurrentMeasure().length
+
 			p.ComputeVelocity()
-			p.ComputeSwingFactor()
-			p.AddChord(p.Clock, uint32(actualMeasureLength))
-			p.AddDrum(p.Clock, uint32(actualMeasureLength))
+			p.computeSwingFactor()
+			p.AddChord(p.Clock, uint32(p.MeasLength))
+			p.AddDrum(p.Clock, uint32(p.MeasLength))
 
 			sort.Slice(p.AuxSequence, func(i, j int) bool { return p.AuxSequence[i].Tick < p.AuxSequence[j].Tick })
 
 			p.MeasSeq = append(p.MeasSeq, p.Clock)
 			p.MeasStart = p.Clock
-			if actualMeasureLength == p.TuneMeasureLength {
-				// avoid pickup
-				p.PushEvent(SeqEvent{p.Clock, MStart{MeasureId: iter.CurrentMeasure().Id}})
-			}
+			p.pushEvent(SeqEvent{p.Clock, MStart{
+				MeasureId:         iter.CurrentMeasure().Id,
+				MeasureLength:     iter.CurrentMeasure().length,
+				MeasureLengthTune: p.TuneMeasureLength,
+			}})
+
 			Replay = false
 		}
 
@@ -566,12 +582,12 @@ loop:
 				log.Println("end not found")
 			}
 		default:
-			//fmt.Println("Process ", el)
+
+			// Process element => main job
 			if el.Elem != nil {
 				el.Elem.Process(p)
 			}
 		}
-
 	}
 	return barCount
 }
@@ -624,6 +640,7 @@ func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 		coeff := 0
 
 		for im, measure := range part.Measures {
+			mlength := 0
 			for ic, item := range measure.Contents {
 				switch v := item.Elem.(type) {
 				case MAttributes:
@@ -648,9 +665,68 @@ func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 					}
 					v.Duration *= coeff
 					p.Part[ip].Measures[im].Contents[ic].Elem = v
+					mlength += v.Duration
 				}
 			}
+			part.Measures[im].length = mlength
 
+		}
+	}
+
+}
+func (p *Player) PlaySet(set MusicSet, FeedBack chan string) {
+	defer func() {
+		log.Println("Midi-Exit playing")
+	}()
+	p.locker.Lock()
+	p.stopRequest.Store(false)
+	defer p.locker.Unlock()
+
+	log.Println("Midi-Play:", set)
+	for iset, t := range set {
+		if p.stopRequested() {
+			return
+		}
+
+		log.Println("Midi-Parse:", t.File)
+
+		select { // Update the displayed score
+		case FeedBack <- t.File:
+		default:
+		}
+
+		partition, err := Parse(t.File)
+		log.Println("Midi-Parse:", err, len(partition.Part))
+		if err != nil || len(partition.Part) == 0 || len(partition.Part[0].Measures) < 3 {
+			log.Println("Invalid Tune:", t.File, err)
+			break
+		}
+		count := t.Count
+		p.passCount = 1
+		barCount := -1
+		signalBar := -1
+		for !p.stopRequested() {
+			// Play the tune
+			// As much as possible the display must be updated before the end
+			barCount = p.playTune(partition.Part[0], signalBar, func() {
+				if iset != len(set)-1 {
+					select {
+					case FeedBack <- set[iset+1].File:
+					default:
+					}
+				}
+			})
+			p.passCount++
+			if count > 0 { // count == 0 => infinite
+				count--
+				if count == 1 && barCount > 0 {
+					signalBar = barCount - 2
+					barCount = -1
+				}
+				if count == 0 {
+					break
+				}
+			}
 		}
 	}
 
