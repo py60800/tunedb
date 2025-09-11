@@ -27,7 +27,7 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 	}
 
 	menuButton, _ := gtk.MenuButtonNew()
-	menuButton.SetLabel("AbcImport...")
+	menuButton.SetLabel("ABC Import...")
 	popover, _ := gtk.PopoverNew(menuButton)
 	menuButton.SetPopover(popover)
 	grid, _ := gtk.GridNew()

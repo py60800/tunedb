@@ -51,7 +51,7 @@ func (pm *MidiPlayCtrl) Widget() gtk.IWidget {
 }
 func (pm *MidiPlayCtrl) SetTempo(tempo int, tuneKind string) {
 	if tempo == 0 {
-		tempo = GetContext().DB.TuneKindGetTempo(tuneKind)
+		tempo = Context().DB.TuneKindGetTempo(tuneKind)
 	}
 	pm.speed.SetValue(float64(tempo))
 }
@@ -234,12 +234,12 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	pm.memoPlay.SetLabel("Memorize")
 	pm.memoPlay.Connect("clicked", func() {
 		if t := ActiveTune(); t != nil {
-			GetContext().Stop()
+			Context().Stop()
 			t.Tempo = int(pm.speed.GetValue())
 			t.Instrument = pm.instrument.GetActiveText()
 			t.VelocityPattern = pm.velocitySelector.GetActiveText()
 			t.SwingPattern = pm.swingSelector.GetActiveText()
-			GetContext().DB.TuneMidiPlayUpdate(t)
+			Context().DB.TuneMidiPlayUpdate(t)
 		}
 	})
 	pm.grid.Attach(pm.memoPlay, width-2, is, 2, 1)
@@ -277,7 +277,7 @@ type WMetronome struct {
 }
 
 func (c *WMetronome) Ticker() {
-	context := GetContext()
+	context := Context()
 	if !c.ziquePlayer.IsPlaying() {
 		c.MetronomeHide()
 		return
@@ -371,7 +371,7 @@ func (c *WMetronome) MetronomeHide() {
 	c.Metronome.QueueDraw()
 }
 func (c *WMetronome) MetronomeShow() {
-	c.ziquePlayer = GetContext().midiPlayCtrl.Zique()
+	c.ziquePlayer = Context().midiPlayCtrl.Zique()
 	tickChan := c.ziquePlayer.TickBack
 	for len(tickChan) > 0 {
 		<-tickChan

@@ -57,8 +57,11 @@ type ZContext struct {
 
 var ziqueContext ZContext
 
-func GetContext() *ZContext {
+func Context() *ZContext {
 	return &ziqueContext
+}
+func DB() *zdb.TuneDB {
+	return ziqueContext.DB
 }
 
 func ActiveTune() *zdb.DTune {
@@ -186,7 +189,6 @@ func (c *ZContext) LoadTuneByID(id int, keepPlayContext bool, forceReload bool) 
 	if tune.ID != 0 {
 		c.LoadTune(&tune, keepPlayContext)
 	}
-
 }
 
 func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
@@ -203,7 +205,7 @@ func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
 	}
 
 	c.mp3SetPlayer.ShowCount(tune.ID)
-	c.extLinkCtrl.UpdateTuneLinks(c, tune.ID)
+	c.extLinkCtrl.UpdateTuneLinks(tune.ID)
 	c.setPlayCtrl.SetCount(c.DB.TuneSetGetCount(tune.ID))
 
 	c.Image.Refresh()
@@ -212,7 +214,7 @@ func (c *ZContext) LoadTune(tune *zdb.DTune, keepPlayContext bool) {
 
 func Quit() {
 	log.Println("TuneDb Quit")
-	c := GetContext()
+	c := Context()
 	c.tuneSelector.SaveContext()
 	c.midiPlayCtrl.Stop()
 	c.midiPlayCtrl.Zique().Kill()
@@ -309,6 +311,7 @@ func (c *ZContext) RefreshTune() {
 	if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
 
 		if tune.FileType == zdb.FileTypeMscz {
+			log.Println("Do RefreshTune")
 			date, _ := util.GetModificationDate(tune.File)
 			c.DB.MsczTuneSave(tune.File, "", date)
 			c.Image.ForceUpdate()
@@ -320,7 +323,7 @@ func (c *ZContext) RefreshTune() {
 var StartupMessages []string
 
 func OnceCheck() {
-	GetContext().tuneSelector.Refresh(true)
+	Context().tuneSelector.Refresh(true)
 
 	for _, m := range StartupMessages {
 		log.Println("Startup message:", m)
@@ -504,7 +507,7 @@ func main() {
 
 	MakeHomeContext(workingDir)
 
-	c := GetContext()
+	c := Context()
 	log.Println("Open database")
 	c.DB = zdb.TuneDBNew()
 	log.Println("Helper init")

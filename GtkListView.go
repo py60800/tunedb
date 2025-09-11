@@ -3,7 +3,8 @@ package main
 
 import (
 	"fmt"
-        "log"
+	"log"
+
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -14,9 +15,10 @@ type IListStoreColumn interface {
 	Type() glib.Type
 	Widget() gtk.IWidget
 	Renderer() gtk.ICellRenderer
-	SetValue(interface{})
-	GetValue() interface{}
-	BlankValue() interface{}
+	SetValue(any)
+	GetValue() any
+	BlankValue() any
+	Attribute() string
 	Self() *ListStoreColumn
 	SetWidth(int)
 }
@@ -24,17 +26,25 @@ type IListStoreColumn interface {
 type ListStoreColumn struct {
 	CTitle    string
 	GType     glib.Type
+	Attr      string
 	CRenderer gtk.ICellRenderer
 	Storage   *gtk.ListStore
 	CharWidth int
 	Column    int
+	widget    gtk.IWidget
 }
 
 func (lc *ListStoreColumn) Self() *ListStoreColumn {
 	return lc
 }
+func (lc *ListStoreColumn) Attribute() string {
+	return lc.Attr
+}
 func (lc *ListStoreColumn) Title() string {
 	return lc.CTitle
+}
+func (lc *ListStoreColumn) Widget() gtk.IWidget {
+	return lc.widget
 }
 
 func (lc *ListStoreColumn) Type() glib.Type {
@@ -50,71 +60,118 @@ type ListStoreColumnText struct {
 	entry *gtk.Entry
 }
 
-func (ls *ListStoreColumnText) Widget() gtk.IWidget {
-	return ls.entry
-}
 func ListStoreColumnTextNew(title string, w int) *ListStoreColumnText {
-	lc := ListStoreColumnText{
+	r, _ := gtk.CellRendererTextNew()
+	entry, _ := gtk.EntryNew()
+	entry.SetWidthChars(w)
+	entry.SetEditable(true)
+
+	return &ListStoreColumnText{
 		ListStoreColumn: ListStoreColumn{
 			CTitle:    title,
 			GType:     glib.TYPE_STRING,
 			CharWidth: w,
+			Attr:      "text",
+			CRenderer: r,
+			widget:    entry,
 		},
+		entry: entry,
 	}
-	lc.entry, _ = gtk.EntryNew()
-	lc.entry.SetWidthChars(w)
-	lc.entry.SetEditable(true)
-	lc.CRenderer, _ = gtk.CellRendererTextNew()
-	return &lc
 }
-func (ls *ListStoreColumnText) SetValue(t interface{}) {
-	ls.entry.SetText(t.(string))
+func (ls *ListStoreColumnText) SetValue(val any) {
+	if v, ok := val.(string); ok {
+		ls.entry.SetText(v)
+	}
 }
-func (ls *ListStoreColumnText) GetValue() interface{} {
+func (ls *ListStoreColumnText) GetValue() any {
 	t, _ := ls.entry.GetText()
 	return t
 }
-func (ls *ListStoreColumnText) BlankValue() interface{} {
+
+func (ls *ListStoreColumnText) BlankValue() any {
 	return ""
 }
 func (ls *ListStoreColumnText) SetWidth(w int) {
-	ls.entry.ToWidget().SetSizeRequest(w, -1)
+	ls.widget.(*gtk.Entry).SetSizeRequest(w, -1)
 }
 
-// Int
+// Int -------------------------------------------------------------------------
 type ListStoreColumnInt struct {
 	ListStoreColumn
 	spin *gtk.SpinButton
 	from int
 }
 
-func (ls *ListStoreColumnInt) Widget() gtk.IWidget {
-	return ls.spin
-}
 func ListStoreColumnIntNew(title string, digits int, from int, to int, step int) *ListStoreColumnInt {
-	lc := ListStoreColumnInt{
-		ListStoreColumn: ListStoreColumn{CTitle: title, GType: glib.TYPE_INT, CharWidth: digits + 4},
-	}
-	lc.spin, _ = gtk.SpinButtonNewWithRange(float64(from), float64(to), float64(step))
-
-	lc.from = from
 	r, _ := gtk.CellRendererSpinNew()
 	r.SetProperty("digits", digits)
-	lc.CRenderer = r
-	return &lc
+
+	spin, _ := gtk.SpinButtonNewWithRange(float64(from), float64(to), float64(step))
+
+	return &ListStoreColumnInt{
+		ListStoreColumn: ListStoreColumn{
+			CTitle:    title,
+			GType:     glib.TYPE_INT,
+			CharWidth: digits + 4,
+			Attr:      "text",
+			CRenderer: r,
+			widget:    spin,
+		},
+		spin: spin,
+		from: from,
+	}
 }
-func (ls *ListStoreColumnInt) SetValue(t interface{}) {
-	ls.spin.SetValue(float64(t.(int)))
+func (ls *ListStoreColumnInt) SetValue(val any) {
+	if v, ok := val.(int); ok {
+		ls.spin.SetValue(float64(v))
+	}
 }
-func (ls *ListStoreColumnInt) GetValue() interface{} {
-	v := ls.spin.GetValue()
-	return int(v)
+func (ls *ListStoreColumnInt) GetValue() any {
+	return ls.spin.GetValueAsInt()
 }
 func (ls *ListStoreColumnInt) BlankValue() interface{} {
 	return ls.from
 }
 func (ls *ListStoreColumnInt) SetWidth(w int) {
-	ls.spin.SetSizeRequest(w, -1)
+	ls.widget.(*gtk.SpinButton).SetSizeRequest(w, -1)
+}
+
+type ListStoreColumnIcon struct {
+	ListStoreColumn
+}
+
+func (ls *ListStoreColumnIcon) Widget() gtk.IWidget {
+	return nil
+}
+func ListStoreColumnIconNew(title string, digits int) *ListStoreColumnIcon {
+	cr, _ := gtk.CellRendererPixbufNew()
+	lc := ListStoreColumnIcon{
+		ListStoreColumn: ListStoreColumn{
+			CTitle: title,
+			//GType:     glib.TYPE_STRING,
+			GType:     glib.TYPE_OBJECT,
+			CharWidth: digits + 4,
+			//Attr:      "icon-name",
+			Attr:      "pixbuf",
+			CRenderer: cr,
+		},
+	}
+	return &lc
+}
+
+func (ls *ListStoreColumnIcon) SetValue(t interface{}) {
+	panic("Unimplemented")
+}
+
+func (ls *ListStoreColumnIcon) GetValue() interface{} {
+	return nil
+}
+
+func (ls *ListStoreColumnIcon) BlankValue() any {
+	return 0
+}
+func (ls *ListStoreColumnIcon) SetWidth(w int) {
+	//ls.w.SetSizeRequest(w, -1)
 }
 
 // Combo
@@ -129,7 +186,8 @@ func (ls *ListStoreColumnCombo) Widget() gtk.IWidget {
 }
 func ListStoreColumnComboNew(title string, w int, values []string) *ListStoreColumnCombo {
 	lc := ListStoreColumnCombo{
-		ListStoreColumn: ListStoreColumn{CTitle: title, GType: glib.TYPE_STRING, CharWidth: w + 4},
+		ListStoreColumn: ListStoreColumn{CTitle: title,
+			GType: glib.TYPE_STRING, CharWidth: w + 4, Attr: "text"},
 	}
 	lc.combo, _ = gtk.ComboBoxTextNew()
 	lc.values = values
@@ -159,50 +217,54 @@ func (ls *ListStoreColumnCombo) SetWidth(w int) {
 	ls.combo.SetSizeRequest(w, -1)
 }
 
-type ListStoreColumnToggle struct {
-	ListStoreColumn
-	cb    *gtk.CheckButton
-	value bool
-}
-
-func (ls *ListStoreColumnToggle) Widget() gtk.IWidget {
-	return ls.cb
-}
-func (ls *ListStoreColumnToggle) Attribute() string {
-	return "active"
-}
-
-func ListStoreColumnToggleNew(title string) *ListStoreColumnToggle {
-	lc := ListStoreColumnToggle{
-		ListStoreColumn: ListStoreColumn{CTitle: title, GType: glib.TYPE_BOOLEAN},
+/*
+	type ListStoreColumnToggle struct {
+		ListStoreColumn
+		cb    *gtk.CheckButton
+		value bool
 	}
-	lc.cb, _ = gtk.CheckButtonNew()
-	cr, _ := gtk.CellRendererToggleNew()
-	cr.SetActivatable(true)
-	cr.SetRadio(true)
-	cr.Connect("toggled", func(cr *gtk.CellRendererToggle, path string) {
-		iter, _ := lc.Storage.GetIterFromString(path)
-		v, _ := lc.Storage.GetValue(iter, lc.Column)
-		gv, _ := v.GoValue()
-		val := gv.(bool)
-		lc.Storage.SetValue(iter, lc.Column, !val)
-	})
-	lc.CRenderer = cr
-	return &lc
-}
 
-func (ls *ListStoreColumnToggle) SetValue(ti interface{}) {
-	ls.value = ti.(bool)
-	ls.cb.SetActive(ls.value)
-}
-func (ls *ListStoreColumnToggle) GetValue() interface{} {
-	t := ls.cb.GetActive()
-	return t
-}
-func (ls *ListStoreColumnToggle) BlankValue() interface{} {
-	return false
-}
+	func (ls *ListStoreColumnToggle) Widget() gtk.IWidget {
+		return ls.cb
+	}
 
+	func (ls *ListStoreColumnToggle) Attribute() string {
+		return "active"
+	}
+
+	func ListStoreColumnToggleNew(title string) *ListStoreColumnToggle {
+		lc := ListStoreColumnToggle{
+			ListStoreColumn: ListStoreColumn{CTitle: title, GType: glib.TYPE_BOOLEAN},
+		}
+		lc.cb, _ = gtk.CheckButtonNew()
+		cr, _ := gtk.CellRendererToggleNew()
+		cr.SetActivatable(true)
+		cr.SetRadio(true)
+		cr.Connect("toggled", func(cr *gtk.CellRendererToggle, path string) {
+			iter, _ := lc.Storage.GetIterFromString(path)
+			v, _ := lc.Storage.GetValue(iter, lc.Column)
+			gv, _ := v.GoValue()
+			val := gv.(bool)
+			lc.Storage.SetValue(iter, lc.Column, !val)
+		})
+		lc.CRenderer = cr
+		return &lc
+	}
+
+	func (ls *ListStoreColumnToggle) SetValue(ti interface{}) {
+		ls.value = ti.(bool)
+		ls.cb.SetActive(ls.value)
+	}
+
+	func (ls *ListStoreColumnToggle) GetValue() interface{} {
+		t := ls.cb.GetActive()
+		return t
+	}
+
+	func (ls *ListStoreColumnToggle) BlankValue() interface{} {
+		return false
+	}
+*/
 type WListStore struct {
 	container *gtk.ScrolledWindow
 	treeView  *gtk.TreeView
@@ -262,7 +324,6 @@ func ListStoreGetBool(ls *gtk.ListStore, iter *gtk.TreeIter, col int) bool {
 				log.Printf("ListStoreGetBool: invalid type:%T\n", v)
 			}
 		}
-
 	}
 	return false
 }
@@ -278,6 +339,7 @@ func (wl *WListStore) insert(pos *gtk.TreeIter, data map[string]any) {
 			panic(fmt.Sprintf("Internal error : Unknown column: %v %v", k, c))
 		}
 	}
+	wl.sel.UnselectAll()
 	wl.sel.SelectIter(pos)
 
 }
@@ -319,6 +381,52 @@ func (m *WListStore) GetValues() []map[string]interface{} {
 	}
 	return res
 }
+func (wl *WListStore) mkEditPopover() {
+	wl.popover, _ = gtk.PopoverNew(wl.treeView)
+	popoGrid, _ := gtk.GridNew()
+	wl.popover.Add(popoGrid)
+
+	for i, c := range wl.columns {
+		wl.colNames[c.Title()] = i
+		l, _ := gtk.LabelNewWithMnemonic(c.Title())
+		popoGrid.Attach(l, 0, i, 2, 1)
+		popoGrid.Attach(c.Widget(), 3, i, 5, 1)
+	}
+
+	set := MkButton("Set", func() {
+		p1 := wl.ListStore.Append()
+		for i, c := range wl.columns {
+			v := c.GetValue()
+			wl.ListStore.SetValue(p1, i, v)
+		}
+		wl.popover.Hide()
+	})
+
+	cancel := MkButton("Cancel", func() {
+		wl.popover.Hide()
+	})
+	y := len(wl.columns)
+	popoGrid.Attach(set, 0, y, 3, 1)
+	popoGrid.Attach(cancel, 3, y, 3, 1)
+}
+
+func (wl *WListStore) GroupAction() {
+
+}
+func (wl *WListStore) selection() []*gtk.TreePath {
+	lst := wl.sel.GetSelectedRows(wl.ListStore)
+	liter := make([]*gtk.TreePath, 0)
+	lst.Foreach(func(v any) {
+		if iter, ok := v.(*gtk.TreePath); ok {
+			liter = append(liter, iter)
+		}
+	})
+	return liter
+}
+func (wl *WListStore) iter(p *gtk.TreePath) *gtk.TreeIter {
+	iter, _ := wl.ListStore.GetIter(p)
+	return iter
+}
 
 func WListStoreNew(container *gtk.ScrolledWindow, columns []IListStoreColumn, withAdd bool) (*WListStore, gtk.IWidget) {
 	const CharW = 10
@@ -335,60 +443,25 @@ func WListStoreNew(container *gtk.ScrolledWindow, columns []IListStoreColumn, wi
 	}
 	lTypes = append(lTypes, []glib.Type{glib.TYPE_BOOLEAN, glib.TYPE_INT}...)
 	ls, _ := gtk.ListStoreNew(lTypes...)
-	wl.ListStore = ls
 
-	wl.popover, _ = gtk.PopoverNew(wl.treeView)
-	popoGrid, _ := gtk.GridNew()
-	wl.popover.Add(popoGrid)
+	wl.ListStore = ls
 
 	wl.colNames["_ID"] = len(columns) + 1
 	wl.colNames["_changed"] = len(columns)
 	for i, c := range columns {
 		wl.colNames[c.Title()] = i
-		l, _ := gtk.LabelNewWithMnemonic(c.Title())
-		popoGrid.Attach(l, 0, i, 2, 1)
-		popoGrid.Attach(c.Widget(), 3, i, 5, 1)
 		c.Self().Storage = ls
 
-		tvCol, _ := gtk.TreeViewColumnNewWithAttribute(c.Title(), c.Renderer(), "text", i)
+		tvCol, _ := gtk.TreeViewColumnNewWithAttribute(c.Title(), c.Renderer(), c.Attribute(), i)
+
 		tvCol.SetFixedWidth(c.Self().CharWidth * CharW)
 		wl.treeView.AppendColumn(tvCol)
 	}
 	wl.treeView.SetModel(ls)
-	set, _ := gtk.ButtonNewWithLabel("Set")
-	cancel, _ := gtk.ButtonNewWithLabel("Cancel")
-	popoGrid.Attach(set, 0, len(columns), 3, 1)
-	popoGrid.Attach(cancel, 3, len(columns), 3, 1)
-	cancel.Connect("clicked", func() {
-		wl.popover.Hide()
-	})
-	set.Connect("clicked", func() {
-		p1 := wl.ListStore.Append()
-		for i, c := range columns {
-			v := c.GetValue()
-			wl.ListStore.SetValue(p1, i, v)
-		}
-		wl.popover.Hide()
-	})
 
 	wl.sel, _ = wl.treeView.GetSelection()
 	wl.sel.SetMode(gtk.SELECTION_BROWSE)
-	wl.sel.Connect("changed", func(s *gtk.TreeSelection) {
-		if _, p1, ok := s.GetSelected(); ok {
-			for i, c := range columns {
-				v, _ := ls.GetValue(p1, i)
-				gv, _ := v.GoValue()
-				c.SetValue(gv)
-				w := c.Widget()
-				w.Set("sensitive", true)
-			}
-		} else {
-			for _, c := range columns {
-				w := c.Widget()
-				w.Set("sensitive", false)
-			}
-		}
-	})
+
 	if container != nil {
 		container.Add(wl.treeView)
 		box.PackStart(container, true, true, 0)
@@ -415,33 +488,44 @@ func WListStoreNew(container *gtk.ScrolledWindow, columns []IListStoreColumn, wi
 	actionBox.Add(down)
 	actionBox.Add(delete)
 	box.PackStart(actionBox, false, false, 0)
+
 	up.Connect("clicked", func() {
-		if _, p1, ok := wl.sel.GetSelected(); ok {
-			if _, p2, ok := wl.sel.GetSelected(); ok {
-				if ls.IterPrevious(p2) {
-					ls.Swap(p1, p2)
-					//	wl.sel.SelectIter(psel)
-				}
+		liter := wl.selection()
+		if len(liter) > 0 {
+			p0 := wl.iter(liter[0])
+			pn := wl.iter(liter[len(liter)-1])
+
+			if ls.IterPrevious(p0) {
+				ls.MoveAfter(p0, pn)
+
 			}
 		}
+
 	})
 	down.Connect("clicked", func() {
-		if _, p1, ok := wl.sel.GetSelected(); ok {
-			if _, p2, ok := wl.sel.GetSelected(); ok {
-				if ls.IterNext(p2) {
-					ls.Swap(p1, p2)
-					//wl.sel.SelectIter(psel)
-				}
+		liter := wl.selection()
+		if len(liter) > 0 {
+			p0 := wl.iter(liter[0])
+			pn := wl.iter(liter[len(liter)-1])
+			if ls.IterNext(pn) {
+				ls.MoveBefore(pn, p0)
 			}
 		}
+
 	})
 	delete.Connect("clicked", func() {
-		if _, p1, ok := wl.sel.GetSelected(); ok {
-			ls.Remove(p1)
+		liter := wl.selection()
+		for _, p := range liter {
+			iter := wl.iter(p)
+			ls.Remove(iter)
 		}
+
 	})
 	wl.treeView.Connect("row-activated", func(tv *gtk.TreeView, path *gtk.TreePath) {
 		if wl.onActivate == nil {
+			if wl.popover == nil {
+				wl.mkEditPopover()
+			}
 			if iter, ok := ls.GetIter(path); ok == nil {
 				for i, c := range columns {
 					v, _ := ls.GetValue(iter, i)
@@ -449,7 +533,7 @@ func WListStoreNew(container *gtk.ScrolledWindow, columns []IListStoreColumn, wi
 					c.SetValue(gv)
 				}
 			}
-			wl.popover.Show()
+			wl.popover.ShowAll()
 		} else {
 			data := make(map[string]interface{})
 			if iter, ok := ls.GetIter(path); ok == nil {
@@ -461,8 +545,7 @@ func WListStoreNew(container *gtk.ScrolledWindow, columns []IListStoreColumn, wi
 				wl.onActivate(data)
 			}
 		}
-
 	})
-	popoGrid.ShowAll()
+	wl.sel.UnselectAll()
 	return wl, box
 }

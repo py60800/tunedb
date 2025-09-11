@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"math"
+
+	//	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -87,6 +89,10 @@ type Player struct {
 	PlayCtrl chan CPlayCtrl
 
 	passCount int
+
+	chordPending  bool
+	chordClockEnd uint32
+	chordEvents   []SeqEvent
 }
 
 func (p Player) String() string {
@@ -183,9 +189,9 @@ func (p *Player) pushEvent(s SeqEvent) {
 }
 
 func (pm *MPart) Attributes() (int, int, int) {
-	var div int
-	var beat int
-	var beatType int
+	div := 120
+	beat := 4
+	beatType := 0
 
 	iter := pm.CreateIterator()
 	for {
@@ -223,6 +229,9 @@ func MakePlayer(name string) *Player {
 	p.DrumPattern = make([]Beat, 0)
 
 	p.PlayCtrl = make(chan CPlayCtrl, 2)
+
+	p.chordPending = false
+	p.chordEvents = make([]SeqEvent, 0)
 	return p
 }
 
@@ -311,11 +320,10 @@ func (h MHarmony) Process(p *Player) {
 	p.CurrentChord = EChord{p.KeyToInt(h.Root.RootStep, 2, h.Root.RootAlter), h.Kind}
 }
 
-func (n MNote) Process(p *Player) {
+func (n *MNote) Process(p *Player) {
 	if !n.IsRest() && !MelodyOff {
-		//	fmt.Println("Tied:", n.Notations.Tied.Type)
 		doRoll := false
-		if PlayRoll && n.Notations.StrongAccent.Local == "strong-accent" {
+		if PlayRoll && n.Notations.StrongAccent.Local == "strong-accent" && n.chordStatus == CHORD_NONE {
 			rollPattern, ok := RollPattern[RPattern{n.Step, n.Alter, n.Type, n.Dot.Local == "dot"}]
 			if ok {
 				doRoll = true
@@ -351,13 +359,52 @@ func (n MNote) Process(p *Player) {
 					ev := PEvent(PNoteOn{mn, p.GetVelocity(int(p.Clock - p.MeasStart)), DefaultChannel})
 					p.pushEvent(SeqEvent{p.Clock, ev})
 				}
-				p.Clock += p.xmlDuration2MidiDuration(n.Duration)
-				if n.Notations.Tied.Type != "start" {
-					p.pushEvent(SeqEvent{p.Clock - 1, PNoteOff{mn, DefaultChannel}})
+				switch n.chordStatus {
+				case CHORD_NONE:
+					p.Clock += p.xmlDuration2MidiDuration(n.Duration)
+					if n.Notations.Tied.Type != "start" {
+						p.pushEvent(SeqEvent{p.Clock - 1, PNoteOff{mn, DefaultChannel}})
+					}
+					if p.chordPending {
+						log.Println("Midi: Chord Sequence error")
+					}
+				case CHORD_START:
+					log.Println("Chord Start")
+					p.chordClockEnd = p.Clock + p.xmlDuration2MidiDuration(n.Duration)
+					p.chordEvents = make([]SeqEvent, 0)
+					p.chordEvents = append(p.chordEvents,
+						SeqEvent{p.Clock + p.xmlDuration2MidiDuration(n.Duration) - 1,
+							PNoteOff{mn, DefaultChannel}})
+					if p.chordPending {
+						log.Println("Midi: Chord Sequence error (start)")
+					}
+					p.chordPending = true
+				case CHORD_MID:
+					if !p.chordPending {
+						log.Println("Midi: Chord Sequence error (mid)")
+					}
+					p.chordEvents = append(p.chordEvents,
+						SeqEvent{p.Clock + p.xmlDuration2MidiDuration(n.Duration) - 1,
+							PNoteOff{mn, DefaultChannel}})
+
+				case CHORD_END:
+					log.Println("Chord End", len(p.chordEvents))
+					if !p.chordPending {
+						log.Println("Midi: Chord Sequence error (end)")
+					}
+					p.chordEvents = append(p.chordEvents,
+						SeqEvent{p.Clock + p.xmlDuration2MidiDuration(n.Duration) - 1,
+							PNoteOff{mn, DefaultChannel}})
+					sort.Slice(p.chordEvents, func(i, j int) bool { return p.chordEvents[i].Tick < p.chordEvents[j].Tick })
+					for _, evt := range p.chordEvents {
+						p.pushEvent(evt)
+
+					}
+					p.Clock = p.chordClockEnd
+					p.chordPending = false
 				}
 			}
 		}
-
 	} else {
 		p.Clock += p.xmlDuration2MidiDuration(n.Duration)
 
@@ -635,12 +682,20 @@ func (p *Player) AddDrum(Clock uint32, actualMeasureLength uint32) {
 	}
 }
 
+const (
+	CHORD_NONE = iota
+	CHORD_START
+	CHORD_MID
+	CHORD_END
+)
+
 func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 	for ip, part := range p.Part {
 		coeff := 0
 
 		for im, measure := range part.Measures {
 			mlength := 0
+
 			for ic, item := range measure.Contents {
 				switch v := item.Elem.(type) {
 				case MAttributes:
@@ -659,20 +714,37 @@ func (p *MPartition) NormalizeDivisions(MasterDivisions int) {
 							p.Part[ip].Measures[im].Contents[ic].Elem.(MAttributes).Contents[ia].Elem = d
 						}
 					}
-				case MNote:
+				case *MNote:
 					if coeff == 0 {
 						panic("Missing division parameter")
 					}
 					v.Duration *= coeff
 					p.Part[ip].Measures[im].Contents[ic].Elem = v
-					mlength += v.Duration
+					if !v.IsChord() {
+						mlength += v.Duration
+					} else {
+						log.Println("Chord found", v)
+						nm := p.Part[ip].Measures[im].Contents[ic].Elem.(*MNote)
+						log.Printf("%T %v %v\n", nm, nm, &nm)
+						nm.setChordStatus(CHORD_END)
+						log.Println(nm)
+						for j := ic - 1; j >= 0; j-- {
+							log.Println("Check:", j)
+							if n, ok := measure.Contents[j].Elem.(*MNote); ok {
+								ncs := CHORD_START
+								if n.IsChord() {
+									ncs = CHORD_MID
+								}
+								p.Part[ip].Measures[im].Contents[j].Elem.(*MNote).chordStatus = ncs
+								break
+							}
+						}
+					}
 				}
 			}
 			part.Measures[im].length = mlength
-
 		}
 	}
-
 }
 func (p *Player) PlaySet(set MusicSet, FeedBack chan string) {
 	defer func() {
@@ -729,5 +801,4 @@ func (p *Player) PlaySet(set MusicSet, FeedBack chan string) {
 			}
 		}
 	}
-
 }

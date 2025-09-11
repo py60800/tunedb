@@ -74,7 +74,7 @@ func (m MPartition) String() string {
 		for _, m := range p.Measures {
 			r += fmt.Sprintf("Id %v \n", m.Id)
 			for _, c := range m.Contents {
-				r += fmt.Sprintf("\t%v\n", c)
+				r += fmt.Sprintf("\t%v %T %v\n", c.Type, c.Elem, c.Elem)
 			}
 		}
 	}
@@ -144,7 +144,7 @@ func (m *Mixed) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {
 	case "note":
 		var e MNote
 		err = d.DecodeElement(&e, &start)
-		m.Elem = e
+		m.Elem = &e
 	case "attributes":
 		var e MAttributes
 		err = d.DecodeElement(&e, &start)
@@ -251,6 +251,7 @@ type MTime struct {
 
 type MNote struct {
 	//	Pitch    MPitch   `xml:"pitch"`
+	Chord    xml.Name `xml:"chord"`
 	Step     string   `xml:"pitch>step"`
 	Octave   int      `xml:"pitch>octave"`
 	Alter    int      `xml:"pitch>alter"`
@@ -262,11 +263,24 @@ type MNote struct {
 	TimeMod   MTimeMod   `xml:"time-modification`
 	Notations MNotations `xml:"notations"`
 	// Tied      string     `xml:"tied>type,attr"`
-	Tied string
+	Tied        string
+	chordStatus int
+}
+
+func (n *MNote) String() string {
+	return fmt.Sprintf("Note: %v o:%v a:%v r:%v, d:%v, c:%v cs:%d",
+		n.Step, n.Octave, n.Alter, n.Rest, n.Duration, n.Chord, n.chordStatus)
 }
 
 func (n *MNote) IsRest() bool {
 	return n.Rest.Local == "rest"
+}
+func (n *MNote) IsChord() bool {
+	isChord := n.Chord.Local == "chord"
+	return isChord
+}
+func (n *MNote) setChordStatus(cs int) {
+	n.chordStatus = cs
 }
 func (n *MNote) IsGraceNote() bool {
 	return n.Duration == 0
@@ -298,7 +312,7 @@ func GetNoteList(fileName string) []int {
 	for _, m := range part.Part[0].Measures {
 		for _, elem := range m.Contents {
 			switch v := elem.Elem.(type) {
-			case MNote:
+			case *MNote:
 
 				if !v.IsRest() {
 					note := baseNotes[rune(v.Step[0])]
@@ -323,27 +337,10 @@ func Parse(fileName string) (MPartition, error) {
 	byteValue, _ := ioutil.ReadAll(xmlFile)
 	err = xml.Unmarshal(byteValue, &partition)
 	util.WarnOnError(err)
+	
 	partition.NormalizeDivisions(MasterDivisions)
-	//fmt.Println(partition)
+	log.Println(partition)
+	
 	return partition, nil
 
 }
-
-/*
-func (m *MMeasure) Length() int {
-	d := 0
-	for _, el := range m.Contents {
-		switch v := el.Elem.(type) {
-		case MNote:
-			d += v.Duration
-		default:
-			// ignore
-		}
-	}
-	return d
-}
-
-func (p *MPart) ComputeMLength() (int, int, int) {
-	return p.Measures[0].Length(), p.Measures[1].Length(), p.Measures[len(p.Measures)-1].Length()
-}
-*/

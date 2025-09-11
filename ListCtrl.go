@@ -2,14 +2,19 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 
+	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/gtk"
+	"github.com/py60800/tunedb/internal/util"
 	"github.com/py60800/tunedb/internal/zdb"
 
-	"github.com/gotk3/gotk3/gtk"
+	_ "embed"
 )
 
 type ListMgr struct {
@@ -28,10 +33,58 @@ type ListMgr struct {
 	suspendChange bool
 
 	tsSelectorIdx []int
-	listStore     *WListStore
+	listStore     *WTreeStore
 	name          *gtk.Entry
 	tag           *gtk.Entry
 	comment       *gtk.TextView
+}
+
+func TitleCombine(lst []string) string {
+	title := ""
+	for i, t := range lst {
+		p := ""
+		if i > 0 {
+			p = "/"
+		}
+		title += p + util.STruncate(t, 10)
+	}
+	return util.STruncate(title, 40)
+}
+
+func doGroup(tv *WTreeStore, val [][]any) []any {
+	res := make([]any, len(val[0]))
+	res[tv.GetColIdx("ID")] = len(val)
+	res[tv.GetColIdx("Kind")] = "Set"
+	titles := make([]string, 0)
+	for i := range val {
+		t := val[i][tv.GetColIdx("Title")]
+		if s, ok := t.(string); ok {
+			titles = append(titles, s)
+		}
+	}
+	res[tv.GetColIdx("Title")] = TitleCombine(titles)
+	ic := tv.GetColIdx("Tie")
+	ig := tv.GetColIdx("_group")
+	for i := range val {
+		switch i {
+		case 0:
+			val[i][ic] = icons[zdb.TL_GroupStart]
+			val[i][ig] = zdb.TL_GroupStart
+		case len(val) - 1:
+			val[i][ic] = icons[zdb.TL_GroupEnd]
+			val[i][ig] = zdb.TL_GroupEnd
+		default:
+			val[i][ic] = icons[zdb.TL_GroupMid]
+			val[i][ig] = zdb.TL_GroupMid
+		}
+	}
+	return res
+}
+func unGroup(tv *WTreeStore, val [][]any) {
+	for i := range val {
+		val[i][tv.GetColIdx("Tie")] = icons[zdb.TL_GroupNone]
+		val[i][tv.GetColIdx("_group")] = zdb.TL_GroupNone
+	}
 }
 
 func MkListMgr() (*ListMgr, gtk.IWidget) {
@@ -87,39 +140,43 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 
 	var w gtk.IWidget
 	sp.tuneSelector, w = STuneSelectorNew(func(ref *zdb.DTuneReference) {
-		tune := GetContext().DB.TuneGetByID(ref.ID)
-		sp.listStore.InsertM(map[string]any{
-			"ID":    tune.ID,
-			"_ID":   tune.ID,
-			"Title": tune.Title,
-			"Kind":  tune.Kind,
-			"PlayL": tune.Play.String(),
+		tune := DB().TuneGetByID(ref.ID)
+		sp.listStore.AppendM(nil, map[string]any{
+			"ID":     tune.ID,
+			"_ID":    tune.ID,
+			"Title":  tune.Title,
+			"Kind":   tune.Kind,
+			"PlayL":  tune.Play.String(),
+			"Tie":    icons[0],
+			"_group": zdb.TL_GroupNone,
 		})
 	})
 	mainGrid.Attach(w, 0, is, gw, 1)
 	is++
-	columns := []IListStoreColumn{
-		ListStoreColumnIntNew("ID", 2, 0, 1000000, 1),
-		ListStoreColumnTextNew("Kind", 5),
-		ListStoreColumnTextNew("Title", 30),
-		ListStoreColumnTextNew("PlayL", 5),
+	columns := []ITreeStoreColumn{
+		TreeStoreColumnIntNew("ID", 2, 0, 1000000, 1),
+		TreeStoreColumnTextNew("Kind", 5),
+		TreeStoreColumnTextNew("Title", 30),
+		TreeStoreColumnTextNew("PlayL", 5),
+		TreeStoreColumnIconNew("Tie", 2),
+		TreeStoreColumnIntNew("_group", 0, 0, 4, 1),
 	}
 	vadj, _ := gtk.AdjustmentNew(0, 0, 100, 1, 0, 0)
 	scw, _ := gtk.ScrolledWindowNew(nil, vadj)
-	sp.listStore, w = WListStoreNew(scw, columns, false)
+	sp.listStore, w = WTreeStoreNew(scw, columns, false)
 	scw.SetSizeRequest(450, 400)
 
 	mainGrid.Attach(w, 0, is, gw, 10)
 	sp.listStore.SetActivate(func(data map[string]interface{}) {
 		if id, ok := data["ID"].(int); ok {
-			GetContext().LoadTuneByID(id, false, true)
+			Context().LoadTuneByID(id, false, true)
 		}
 	})
+	sp.listStore.SetOnGroup(doGroup, unGroup)
 
 	is += 10
 
 	save := MkButton("Save", func() {
-
 		sp.SaveTuneList()
 		sp.TuneCtxRefresh()
 	})
@@ -137,14 +194,17 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 
 	clear := MkButton("Clear", func() {
 		sp.clear()
+	})
 
+	export := MkButton("Export", func() {
+		sp.Export()
 	})
 	del := MkButton("Del", func() {
 		if sp.currentTuneList != nil && sp.currentTuneList.ID != 0 {
 			if len(sp.currentTuneList.Tunes) < 5 || MessageConfirm(fmt.Sprintf("Delete tune list ?")) {
 				log.Println("Delete tune list:", sp.currentTuneList.ID)
-				GetContext().DB.TuneListRemove(sp.currentTuneList)
-				zdb.TuneTagUpdate(GetContext().DB)
+				DB().TuneListRemove(sp.currentTuneList)
+				zdb.TuneTagUpdate(DB())
 				sp.TuneCtxRefresh()
 			}
 		}
@@ -158,12 +218,45 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 	mainGrid.Attach(deDup, 3, is, 1, 1)
 	mainGrid.Attach(del, 4, is, 1, 1)
 	mainGrid.Attach(info, 5, is, 1, 1)
+	mainGrid.Attach(export, 6, is, 1, 1)
 	return sp, sp.menuButton
 
 }
+func (sp *ListMgr) doExport(file string, name string) {
+	tunes := sp.listStore.GetValues()
+	f, _ := os.Create(file)
+	defer f.Close()
+	csf := csv.NewWriter(f)
+	defer csf.Flush()
+	csf.Write([]string{"Title", "Group", "Kind", "Mscz", "Img", "Xml"})
+
+	for _, t := range tunes {
+		tune := DB().TuneGetByID(t["ID"].(int))
+		csf.Write([]string{
+			tune.Title,
+			fmt.Sprint(t["_group"].(int)),
+			tune.Kind,
+			tune.File,
+			tune.Img,
+			tune.Xml,
+		})
+	}
+
+}
+func (sp *ListMgr) Export() {
+	name, _ := sp.name.GetText()
+	fc, _ := gtk.FileChooserNativeDialogNew("Select export",
+		Context().win, gtk.FILE_CHOOSER_ACTION_SAVE, "OK", "Cancel")
+	fc.SetCurrentName(name + ".csv")
+	if fc.Run() == int(gtk.RESPONSE_ACCEPT) {
+
+		fmt.Println("Accept", fc.GetFilename())
+		sp.doExport(fc.GetFilename(), name)
+	}
+}
 func (sp *ListMgr) TuneCtxRefresh() {
 	TuneTagUpdated = true
-	GetContext().tuneCtx.Refresh()
+	Context().tuneCtx.Refresh()
 }
 func (sp *ListMgr) fillSelector() {
 	sp.suspendChange = true
@@ -183,7 +276,7 @@ func (sp *ListMgr) apply() {
 	for i, t := range tunes {
 		ids[i] = t["ID"].(int)
 	}
-	GetContext().tuneSelector.RefreshFromList(ids)
+	Context().tuneSelector.RefreshFromList(ids)
 }
 func (sp *ListMgr) clear() {
 	sp.currentTuneList = &zdb.TuneList{}
@@ -192,7 +285,7 @@ func (sp *ListMgr) clear() {
 	sp.listStore.Clear()
 }
 func (sp *ListMgr) SelectTuneList(ts *zdb.TuneListBase) {
-	sp.currentTuneList = GetContext().DB.GetTuneListByID(ts.ID)
+	sp.currentTuneList = DB().GetTuneListByID(ts.ID)
 	if sp.currentTuneList == nil {
 		msg := fmt.Sprintf("[%v] not found", ts.Name)
 		log.Println("Select Tune List", msg)
@@ -206,23 +299,55 @@ func (sp *ListMgr) SelectTuneList(ts *zdb.TuneListBase) {
 
 	ls := sp.listStore
 	ls.Clear()
-	for _, tis := range sp.currentTuneList.Tunes {
-		tune := GetContext().DB.TuneGetByID(tis.DTuneID)
+	var parent *gtk.TreeIter
+	tl := sp.currentTuneList.Tunes
+	tunes := make([]zdb.DTune, len(tl))
+	for i := range tl {
+		tunes[i] = DB().TuneGetByID(tl[i].DTuneID)
+	}
+	for i, tis := range tl {
+		// tune := GetDB().TuneGetByID(tis.DTuneID)
+		tune := &tunes[i]
 		if tune.ID != 0 {
-
-			sp.listStore.AppendM(map[string]any{
+			if tis.Group == zdb.TL_GroupStart {
+				titles := make([]string, 0)
+				for j := i; j < len(tl); j++ {
+					titles = append(titles, tunes[j].Title)
+					if tl[j].Group == zdb.TL_GroupEnd {
+						break
+					}
+				}
+				parent = sp.listStore.AppendM(nil, map[string]any{
+					"_ID":      0,
+					"_changed": false,
+					"ID":       0,
+					"Title":    TitleCombine(titles),
+					"Kind":     "Set",
+					"PlayL":    "",
+					"Tie":      icons[0],
+					"_group":   0,
+				})
+			}
+			sp.listStore.AppendM(parent, map[string]any{
 				"_ID":      tis.DTuneID,
 				"_changed": false,
 				"ID":       tune.ID,
 				"Title":    tune.Title,
 				"Kind":     tune.Kind,
 				"PlayL":    tune.Play.String(),
+				"Tie":      icons[tis.Group],
+				"_group":   tis.Group,
 			})
+			if tis.Group == zdb.TL_GroupEnd {
+				parent = nil
+			}
 		}
+
 	}
+	sp.listStore.Expand()
 }
 func (sp *ListMgr) GetAllTunelist() {
-	sp.tuneList = GetContext().DB.TuneListGetAll()
+	sp.tuneList = DB().TuneListGetAll()
 }
 func (sp *ListMgr) UpdateCombo() {
 	sp.GetAllTunelist()
@@ -247,7 +372,7 @@ func (sp *ListMgr) DeDup() {
 	}
 	sp.listStore.Clear()
 	for _, t := range tunes {
-		sp.listStore.AppendM(t)
+		sp.listStore.AppendM(nil, t)
 	}
 }
 func (sp *ListMgr) SaveTuneList() bool {
@@ -269,7 +394,7 @@ func (sp *ListMgr) SaveTuneList() bool {
 	comment, _ := b.GetText(start, end, true)
 
 	if tag != "" && tag != sp.currentTuneList.Tag {
-		tags := GetContext().DB.TuneListTags()
+		tags := DB().TuneListTags()
 		for _, t := range tags {
 			if t.Tag == tag {
 				Message("Duplicate tag:" + tag)
@@ -299,15 +424,49 @@ func (sp *ListMgr) SaveTuneList() bool {
 		sp.currentTuneList.Tunes[i] = zdb.TuneListItem{
 			Rank:    i,
 			DTuneID: t["ID"].(int),
+			Group:   t["_group"].(int),
 		}
 	}
 	log.Println("Save Tune List:", name)
-	GetContext().DB.TuneListSave(sp.currentTuneList)
-	zdb.TuneTagUpdate(GetContext().DB)
+	DB().TuneListSave(sp.currentTuneList)
+	zdb.TuneTagUpdate(DB())
 
 	sp.UpdateCombo()
 	return true
 	//	sp.selectTuneSet(sp.currentTuneSet.Name)
+}
+
+var icons []*gdk.Pixbuf
+
+//go:embed icons/blank.svg
+var blankIcon []byte
+
+//go:embed icons/start.svg
+var startIcon []byte
+
+//go:embed icons/middle.svg
+var middleIcon []byte
+
+//go:embed icons/end.svg
+var endIcon []byte
+
+func init() {
+	var icn = [][]byte{
+		blankIcon,
+		startIcon,
+		middleIcon,
+		endIcon,
+	}
+	icons = make([]*gdk.Pixbuf, 0)
+	for i := range icn {
+		//		o := glib.Object{}
+		ic, err := gdk.PixbufNewFromBytesOnly(icn[i])
+		if err != nil {
+			panic(err)
+		}
+		//o.SetProperty("pixbuf", ic)
+		icons = append(icons, ic)
+	}
 }
 
 func MkListInfo(sp *ListMgr) gtk.IWidget {

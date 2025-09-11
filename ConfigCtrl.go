@@ -146,7 +146,7 @@ func (c *ZContext) TuneKindConfiguration() {
 			res := make([]zdb.TuneKind, 0, len(data))
 			for _, d := range data {
 				res = append(res, zdb.TuneKind{
-					Kind:  (d["Tune Kind"]).(string),
+					Kind:  d["Tune Kind"].(string),
 					Tempo: d["Tempo"].(int),
 					ID:    d["_ID"].(int),
 				})

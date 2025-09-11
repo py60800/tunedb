@@ -81,6 +81,7 @@ type SvgTab struct {
 	Buttons   []Button
 	Idx       []int
 	selection []int
+	Changed   bool
 }
 
 func (s *SvgTab) SetNotes(Notes []int, buttons []Button) {
@@ -129,6 +130,7 @@ func (s *SvgTab) Click(X, Y, W, H float64) {
 	s.Idx[ib] = (s.Idx[ib] + 1) % len(btns)
 	s.Buttons[ib] = btns[s.Idx[ib]]
 	s.highLight()
+	s.Changed = true
 }
 
 var configInit bool = false
@@ -287,6 +289,7 @@ func (s *SvgTab) FirstFinger() {
 		s.Idx[i] = 0
 	})
 	s.highLight()
+	s.Changed = true
 }
 func (s *SvgTab) FirstRow() {
 	s.fMap(func(i int, dts []Button) {
@@ -300,6 +303,7 @@ func (s *SvgTab) FirstRow() {
 		s.Idx[i] = j
 	})
 	s.highLight()
+	s.Changed = true
 }
 func (s *SvgTab) SecondRow() {
 	s.fMap(func(i int, dts []Button) {
@@ -313,6 +317,7 @@ func (s *SvgTab) SecondRow() {
 		s.Idx[i] = j
 	})
 	s.highLight()
+	s.Changed = true
 }
 func (s *SvgTab) highLight() {
 	for i := range s.Dots {

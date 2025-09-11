@@ -6,8 +6,9 @@ import (
 	"github.com/py60800/tunedb/internal/zdb"
 	"github.com/py60800/tunedb/internal/zixml"
 
-	"github.com/gotk3/gotk3/gtk"
 	"log"
+
+	"github.com/gotk3/gotk3/gtk"
 )
 
 func BConv(b zdb.Button) svgtab.Button {
@@ -29,18 +30,30 @@ func BConv2(b svgtab.Button) zdb.Button {
 
 // *****************************************************************************
 type ConcertinaCtrl struct {
-	win        *gtk.Window
-	ctrlButton *gtk.ToggleButton
+	win         *gtk.Window
+	ctrlButton  *gtk.ToggleButton
+	needRefresh bool
 }
 
 func (cc *ConcertinaCtrl) Hide() {
 	cc.ctrlButton.SetActive(false)
-	ctx := GetContext()
+	ctx := Context()
 	ctx.svgt = nil
 	ctx.Image.Refresh()
 	cc.win.Hide()
 }
 func (cc *ConcertinaCtrl) Quit() {
+	if Context().svgt.Changed {
+		if MessageConfirm("Save changes ?") {
+			cc.SaveFull()
+		}
+	}
+	log.Println("Need Refresh:", cc.needRefresh)
+	if cc.needRefresh {
+		Context().RefreshTune()
+	}
+	cc.Hide()
+
 }
 func (cc *ConcertinaCtrl) Show(c *ZContext) {
 	if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
@@ -56,7 +69,7 @@ func (cc *ConcertinaCtrl) Show(c *ZContext) {
 	}
 }
 func (cc *ConcertinaCtrl) Save() {
-	c := GetContext()
+	c := Context()
 	if tune := ActiveTune(); tune != nil && tune.ID != 0 {
 		if s := c.svgt; s != nil {
 			btns := make([]zdb.CButton, len(s.Buttons))
@@ -66,24 +79,63 @@ func (cc *ConcertinaCtrl) Save() {
 				btns[i].DTuneID = tune.ID
 			}
 			c.DB.TuneSaveButtons(tune.ID, btns)
+			s.Changed = false
 		}
 	}
 }
+func (cc *ConcertinaCtrl) SaveFull() {
+	cc.Save()
+
+	if tune := ActiveTune(); tune != nil && tune.ID != 0 {
+		log.Println("Concertina Save Full:", tune.File)
+		if s := Context().svgt; s != nil {
+			s.MsczUpdate(tune.File)
+		}
+	}
+	cc.needRefresh = true
+
+}
+func (cc *ConcertinaCtrl) FirstFinger() {
+	ctx := Context()
+	if s := ctx.svgt; s != nil {
+		s.FirstFinger()
+		ctx.Image.ResetSelection()
+		ctx.Image.Refresh()
+	}
+
+}
+func (cc *ConcertinaCtrl) FirstRow() {
+	ctx := Context()
+	if s := ctx.svgt; s != nil {
+		s.FirstRow()
+		ctx.Image.ResetSelection()
+		ctx.Image.Refresh()
+	}
+}
+func (cc *ConcertinaCtrl) SecondRow() {
+	ctx := Context()
+	if s := ctx.svgt; s != nil {
+		s.SecondRow()
+		ctx.Image.ResetSelection()
+		ctx.Image.Refresh()
+	}
+}
+
 func ConcertinaCtrlNew() (*ConcertinaCtrl, gtk.IWidget) {
 	cc := &ConcertinaCtrl{}
 	cc.win, _ = gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	cc.win.SetKeepAbove(true)
 	cc.win.SetSizeRequest(200, 400)
 	cc.win.Connect("delete-event", func() bool {
-		cc.Save()
-		cc.Hide()
+		cc.Quit()
 		return true
 	})
 
 	button, _ := gtk.ToggleButtonNewWithLabel("Concertina")
 	button.Connect("toggled", func(b *gtk.ToggleButton) {
 		if b.GetActive() {
-			cc.Show(GetContext())
+			cc.Show(Context())
+			cc.needRefresh = false
 		} else {
 			cc.Hide()
 		}
@@ -93,77 +145,67 @@ func ConcertinaCtrlNew() (*ConcertinaCtrl, gtk.IWidget) {
 	hBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 1)
 	label, _ := gtk.LabelNew("Concertina Tab")
 	selAll := MkButton("Select All", func() {
-		GetContext().Image.SelectAll()
+		Context().Image.SelectAll()
 	})
 	ff := MkButton("1st Finger", func() {
-		ctx := GetContext()
-		if s := ctx.svgt; s != nil {
-			s.FirstFinger()
-			ctx.Image.ResetSelection()
-			ctx.Image.Refresh()
-		}
+		cc.FirstFinger()
 	})
 	fr := MkButton("1st Row", func() {
-		ctx := GetContext()
-		if s := ctx.svgt; s != nil {
-			s.FirstRow()
-			ctx.Image.ResetSelection()
-			ctx.Image.Refresh()
-		}
+		cc.FirstRow()
 	})
 	sr := MkButton("2d Row", func() {
-		ctx := GetContext()
-		if s := ctx.svgt; s != nil {
-			s.SecondRow()
-			ctx.Image.ResetSelection()
-			ctx.Image.Refresh()
-		}
-
+		cc.SecondRow()
 	})
 	save := MkButton("Save Button", func() {
 		log.Println("Concertina Save Button")
-		c := GetContext()
-		if tune := ActiveTune(); tune != nil && tune.ID != 0 {
-			if s := c.svgt; s != nil {
-				btns := make([]zdb.CButton, len(s.Buttons))
-				for i := range btns {
-					btns[i].Button = BConv2(s.Buttons[i])
-					btns[i].Idx = i
-					btns[i].DTuneID = tune.ID
+		cc.Save()
+		/*
+			c := Context()
+			if tune := ActiveTune(); tune != nil && tune.ID != 0 {
+				if s := c.svgt; s != nil {
+					btns := make([]zdb.CButton, len(s.Buttons))
+					for i := range btns {
+						btns[i].Button = BConv2(s.Buttons[i])
+						btns[i].Idx = i
+						btns[i].DTuneID = tune.ID
+					}
+					c.DB.TuneSaveButtons(tune.ID, btns)
 				}
-				c.DB.TuneSaveButtons(tune.ID, btns)
 			}
-		}
+		*/
 	})
 	saveFull := MkButton("Save Full", func() {
-		c := GetContext()
-		if tune := ActiveTune(); tune != nil && tune.ID != 0 {
-		log.Println("Concertina Save Full:",tune.File)
-			if s := c.svgt; s != nil {
-				btns := make([]zdb.CButton, len(s.Buttons))
-				for i := range btns {
-					btns[i].Button = BConv2(s.Buttons[i])
-					btns[i].Idx = i
-					btns[i].DTuneID = tune.ID
+		cc.SaveFull()
+		/*
+			c := Context()
+			if tune := ActiveTune(); tune != nil && tune.ID != 0 {
+			log.Println("Concertina Save Full:",tune.File)
+				if s := c.svgt; s != nil {
+					btns := make([]zdb.CButton, len(s.Buttons))
+					for i := range btns {
+						btns[i].Button = BConv2(s.Buttons[i])
+						btns[i].Idx = i
+						btns[i].DTuneID = tune.ID
+					}
+					c.DB.TuneSaveButtons(tune.ID, btns)
+					s.MsczUpdate(c.ActiveTune.File)
 				}
-				c.DB.TuneSaveButtons(tune.ID, btns)
-				s.MsczUpdate(c.ActiveTune.File)
 			}
-		}
+		*/
 	})
 	done := MkButton("Done", func() {
-		cc.Hide()
+		cc.Quit()
 	})
 	sep, _ := gtk.LabelNew("---")
 	cleanUp := MkButton("CleanUp", func() {
-		c := GetContext()
+		c := Context()
 		if tune := ActiveTune(); tune != nil && tune.ID != 0 {
 			log.Println("Concertina Cleanup")
 			if s := c.svgt; s != nil {
 				s.MsczCleanUp(c.ActiveTune.File)
 			}
+			cc.needRefresh = true
 		}
-
 	})
 	hBox.Add(label)
 	hBox.Add(selAll)

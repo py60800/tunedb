@@ -13,20 +13,6 @@ import (
 	"github.com/py60800/tunedb/internal/zdb"
 )
 
-/*
-ts.playLevelRS.Reset()
-ts.funLevelRS.Reset()
-ts.practiceDateRS.Reset()
-ts.listFilter = 0
-ts.fnEntry.SetText("")
-ts.hidden.SetActive(false)
-
-ts.filterKind.SetActive(0)
-ts.filterText.SetText("")
-ts.resetMode()    X
-ts.resetFifth()
-ts.resetListSelector() X
-*/
 type TuneSelector struct {
 	TuneRefs []zdb.DTuneReference
 	IdxTune  int
@@ -101,7 +87,7 @@ func (ts *TuneSelector) fillMode() {
 func (ts *TuneSelector) fillListSelector() {
 	ts.listSelector.RemoveAll()
 	ts.listSelector.Append("0", "*")
-	tl := GetContext().DB.TuneListGetAll()
+	tl := Context().DB.TuneListGetAll()
 	for _, t := range tl {
 		ts.listSelector.Append(strconv.Itoa(t.ID), fmt.Sprintf("[%s]%s", t.Tag, t.Name))
 	}
@@ -283,16 +269,21 @@ func (ts *TuneSelector) fillSortMethod() {
 
 }
 
-type rAge struct {
+type practiceAge struct {
 	durationT string
 	label     string
 	duration  time.Duration
 }
 
-var practiceDates = []rAge{rAge{durationT: "0s", label: "Now"}, rAge{durationT: "72h", label: "3 Days ago"},
-	rAge{durationT: "168h", label: "1 Week ago"}, rAge{durationT: "672h", label: "1 Month ago"},
-	rAge{durationT: "2160h", label: "3 Months ago"}, rAge{durationT: "4360h", label: "6 Months ago"},
-	rAge{durationT: "100000h", label: "can't remember"}}
+var practiceDates = []practiceAge{
+	practiceAge{durationT: "0s", label: "Now"},
+	practiceAge{durationT: "72h", label: "3 Days ago"},
+	practiceAge{durationT: "168h", label: "1 Week ago"},
+	practiceAge{durationT: "672h", label: "1 Month ago"},
+	practiceAge{durationT: "2160h", label: "3 Months ago"},
+	practiceAge{durationT: "4360h", label: "6 Months ago"},
+	practiceAge{durationT: "100000h", label: "can't remember"},
+}
 
 func practiceDateLabels() []string {
 	l := make([]string, 0, len(practiceDates))
@@ -385,26 +376,6 @@ func (ts *TuneSelector) MkFilter() gtk.IWidget {
 	filterGrid.Attach(w, 0, is, 12, 1)
 	is++
 
-	/*	type rAge struct {
-				d        string
-				l        string
-				duration time.Duration
-			}
-			rhP := []rAge{rAge{d: "0s", l: "Now"}, rAge{d: "72h", l: "3 Days ago"},
-				rAge{d: "168h", l: "1 Week ago"}, rAge{d: "672h", l: "1 Month ago"},
-				rAge{d: "2160h", l: "3 Months ago"}, rAge{d: "4360h", l: "6 Months ago"},
-				rAge{d: "100000h", l: "can't remember"}}
-			for i := range rhP {
-				rhP[i].duration, _ = time.ParseDuration(rhP[i].d)
-			}
-			sort.Slice(rhP, func(i, j int) bool {
-				return rhP[i].duration > rhP[j].duration
-			})
-
-		rhPLabel := make([]string, len(rhP))
-		for i, t := range rhP {
-			rhPLabel[i] = t.l
-		}*/
 	ts.practiceDateRS, w = ts.MkRange("Last Practice Date", practiceDateLabels(),
 		practiceDateToInt(ts.filter.RehearsalFrom), practiceDateToInt(ts.filter.RehearsalTo))
 	filterGrid.Attach(w, 0, is, 12, 1)
@@ -531,7 +502,7 @@ func (c *ZContext) MkTuneSelector() (*TuneSelector, gtk.IWidget) {
 	})
 	addGrid(bNext, 1)
 	bSim := MkButton("~>~", func() {
-		c := GetContext()
+		c := Context()
 		if t := c.ActiveTune; t != nil {
 			c.LoadTune(c.DB.TuneGetSimilar(t), true)
 		}

@@ -19,11 +19,19 @@ type TuneList struct {
 	TuneListBase
 	Tunes []TuneListItem
 }
+
+const (
+	TL_GroupNone = iota
+	TL_GroupStart
+	TL_GroupMid
+	TL_GroupEnd
+)
+
 type TuneListItem struct {
+	DTuneID    int
 	TuneListID int
 	Rank       int
-	DTuneID    int // Exclusive: Tune  or Tune Set
-	TuneSetID  int
+	Group      int
 }
 
 // Tune lists ******************************************************************

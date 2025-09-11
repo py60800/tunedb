@@ -93,7 +93,7 @@ func prefToText(p bool) string {
 	return ""
 }
 func (tl *STuneList) AppendT(t *zdb.MP3TuneInSet) {
-	tune := GetContext().DB.TuneGetByID(t.DTuneID)
+	tune := Context().DB.TuneGetByID(t.DTuneID)
 	iter := tl.ls.Append()
 	tl.ls.SetValue(iter, stTitle, tune.Title)
 	tl.ls.SetValue(iter, stFrom, fmt.Sprintf("%3.1f", t.From))
@@ -183,7 +183,7 @@ func (tl *STuneList) playTune(iter *gtk.TreeIter) {
 	if tune.id == 0 {
 		return
 	}
-	GetContext().LoadTuneByID(tune.id, true, false)
+	Context().LoadTuneByID(tune.id, true, false)
 	tl.parent.playWidget.play(tune.from, tune.to, player.PMPlayRepeat)
 }
 
@@ -261,7 +261,7 @@ func STuneListNew() (*STuneList, gtk.IWidget) {
 			tl.ls.SetValue(iter, stPref, s)
 			tuneId := ListStoreGetInt(tl.ls, iter, stId)
 			if tsetId := ListStoreGetInt(tl.ls, iter, stTisId); tsetId != 0 {
-				GetContext().DB.Mp3SetPreference(tuneId, tsetId, s == "*")
+				Context().DB.Mp3SetPreference(tuneId, tsetId, s == "*")
 			}
 		}
 		runtime.GC()
@@ -288,7 +288,7 @@ func STuneSelectorNew(Append func(r *zdb.DTuneReference)) (*STuneSelector, gtk.I
 	ts.search = MkDeferedSearchEntry(&ts.suspendChange, func(what string) {
 		filter := zdb.FilterNew()
 		filter.PartialName = what
-		ts.tuneRef = GetContext().DB.TuneSearch(filter)
+		ts.tuneRef = Context().DB.TuneSearch(filter)
 		if len(ts.tuneRef) > 50 {
 			ts.tuneRef = ts.tuneRef[:50]
 		}
@@ -309,7 +309,7 @@ func STuneSelectorNew(Append func(r *zdb.DTuneReference)) (*STuneSelector, gtk.I
 	})
 	grid.Attach(b, 4, 1, 1, 1)
 	curr := MkButton("Cur", func() {
-		t := GetContext().ActiveTune
+		t := Context().ActiveTune
 		if t != nil && t.ID != 0 {
 			ref := zdb.DTuneReference{
 				ID:            t.ID,
@@ -337,7 +337,7 @@ var mp3SetConfigurator *Mp3SetConfigurator
 func (m *Mp3SetConfigurator) HandleSignal(idx int, pos float64) {
 	id := m.tuneList.locateTune(idx, pos)
 	if id > 0 {
-		GetContext().LoadTuneByID(id, false, false)
+		Context().LoadTuneByID(id, false, false)
 	}
 }
 func (m *Mp3SetConfigurator) CommentHandler() gtk.IWidget {
@@ -352,7 +352,7 @@ func (m *Mp3SetConfigurator) CommentHandler() gtk.IWidget {
 			start, end := b.GetBounds()
 			m.current.Comment, _ = b.GetText(start, end, true)
 			if m.current.ID != 0 {
-				GetContext().DB.Mp3TuneSetUpdateComment(m.current.ID, m.current.Comment)
+				Context().DB.Mp3TuneSetUpdateComment(m.current.ID, m.current.Comment)
 			}
 			changePending = false
 			return false
@@ -379,7 +379,7 @@ func MkMp3SetConfigurator(mainCursor *gtk.DrawingArea) (*Mp3SetConfigurator, gtk
 	m.popover = popover
 	m.button.SetPopover(popover)
 	m.button.Connect("clicked", func() {
-		m.mp3Selector.Preselect(GetContext().GetCurrentTuneID())
+		m.mp3Selector.Preselect(Context().GetCurrentTuneID())
 	})
 
 	box, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
@@ -442,8 +442,8 @@ func MkMp3SetConfigurator(mainCursor *gtk.DrawingArea) (*Mp3SetConfigurator, gtk
 
 			m.current.Tunes = tunes
 			m.current.From, m.current.To = m.playWidget.GetBounds()
-			GetContext().DB.Mp3SetSave(m.current)
-			GetContext().mp3Collection.MarkContent(m.current.MP3FileID)
+			Context().DB.Mp3SetSave(m.current)
+			Context().mp3Collection.MarkContent(m.current.MP3FileID)
 		}
 
 	})
@@ -451,7 +451,7 @@ func MkMp3SetConfigurator(mainCursor *gtk.DrawingArea) (*Mp3SetConfigurator, gtk
 		if MessageConfirm("Delete Set Configuration ?") {
 			id := m.current.ID
 			if id != 0 {
-				GetContext().DB.Mp3SetDelete(id)
+				Context().DB.Mp3SetDelete(id)
 				m.tuneList.Reset()
 				m.playWidget.Reset()
 			}
@@ -467,7 +467,7 @@ func MkMp3SetConfigurator(mainCursor *gtk.DrawingArea) (*Mp3SetConfigurator, gtk
 			for {
 				t := m.tuneList.getTune(iter)
 				if t.id != 0 {
-					tune := GetContext().DB.TuneGetByID(t.id)
+					tune := Context().DB.TuneGetByID(t.id)
 					files = append(files, tune.Img)
 				}
 				if !ls.IterNext((iter)) {
@@ -476,7 +476,7 @@ func MkMp3SetConfigurator(mainCursor *gtk.DrawingArea) (*Mp3SetConfigurator, gtk
 			}
 		}
 		if len(files) > 0 {
-			GetContext().printer.Run(files)
+			Context().printer.Run(files)
 		}
 
 	})
@@ -494,16 +494,16 @@ func MkMp3SetConfigurator(mainCursor *gtk.DrawingArea) (*Mp3SetConfigurator, gtk
 	return m, m.button
 }
 func (m *Mp3SetConfigurator) ShowCount(id int) {
-	l := GetContext().DB.Mp3SetGetByTuneID(id)
+	l := Context().DB.Mp3SetGetByTuneID(id)
 	m.button.SetLabel(fmt.Sprintf("[%d]MP3...", len(l)))
 }
 
 func (m *Mp3SetConfigurator) PlayDefault() {
-	if id := GetContext().GetCurrentTuneID(); id != 0 {
-		l := GetContext().DB.Mp3SetGetByTuneID(id)
+	if id := Context().GetCurrentTuneID(); id != 0 {
+		l := Context().DB.Mp3SetGetByTuneID(id)
 		if len(l) > 0 {
-			tuneSet := GetContext().DB.Mp3SetGetBySetID(l[0])
-			mp3file := GetContext().DB.Mp3FileGetByID(tuneSet.MP3FileID)
+			tuneSet := Context().DB.Mp3SetGetBySetID(l[0])
+			mp3file := Context().DB.Mp3FileGetByID(tuneSet.MP3FileID)
 			if mp3file != nil {
 				m.SelectMp3(mp3file)
 				for _, t := range tuneSet.Tunes {
@@ -522,7 +522,7 @@ func (m *Mp3SetConfigurator) SelectMp3(mp3file *zdb.MP3File) {
 	m.title.SetTooltipText(fmt.Sprintf("Artist:%v\nAlbum:%v\nTitle:%v\nFile:%v",
 		mp3file.Artist, mp3file.Album, mp3file.Title, mp3file.File))
 
-	m.current = GetContext().DB.Mp3SetGetBySetID(mp3file.ID)
+	m.current = Context().DB.Mp3SetGetBySetID(mp3file.ID)
 	if m.current == nil {
 		m.current = &zdb.MP3TuneSet{
 			MP3FileID: mp3file.ID,

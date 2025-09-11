@@ -72,13 +72,13 @@ func MkLabel(l string) *gtk.Label {
 }
 func Message(msg string) {
 	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
-	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_CLOSE, msg)
+	d := gtk.MessageDialogNew(Context().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_CLOSE, msg)
 	d.Run()
 	d.Destroy()
 }
 func MessageConfirm(msg string) bool {
 	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
-	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_OK_CANCEL, msg)
+	d := gtk.MessageDialogNew(Context().win, f, gtk.MESSAGE_INFO, gtk.BUTTONS_OK_CANCEL, msg)
 	r := d.Run()
 	d.Destroy()
 	return r == gtk.RESPONSE_OK
@@ -86,7 +86,7 @@ func MessageConfirm(msg string) bool {
 
 func OpWait(msg string, msgChan chan string) {
 	f := gtk.DialogFlags(gtk.DIALOG_DESTROY_WITH_PARENT)
-	d := gtk.MessageDialogNew(GetContext().win, f, gtk.MESSAGE_INFO, 0, msg)
+	d := gtk.MessageDialogNew(Context().win, f, gtk.MESSAGE_INFO, 0, msg)
 	d.ToWidget().AddTickCallback(func(widget *gtk.Widget, frameClock *gdk.FrameClock) bool {
 		select {
 		case msg := <-msgChan:

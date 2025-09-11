@@ -38,9 +38,9 @@ func (c *ZContext) MkXchgCtrl() (*XchgCtrl, gtk.IWidget) {
 		switch len(s) {
 		case 0:
 		case 1:
-			msg = GetContext().DB.TuneImport(s[0], "-")
+			msg = Context().DB.TuneImport(s[0], "-")
 		default:
-			msg = GetContext().DB.TuneImport(s[0], s[1])
+			msg = Context().DB.TuneImport(s[0], s[1])
 		}
 		if msg != "" {
 			Message(msg)
@@ -49,7 +49,7 @@ func (c *ZContext) MkXchgCtrl() (*XchgCtrl, gtk.IWidget) {
 	})
 	exportB := MkButton("Export", func() {
 		if tune := ActiveTune(); tune != nil {
-			GetContext().clip.SetText(fmt.Sprintf("%s;%s", tune.File, tune.Kind))
+			Context().clip.SetText(fmt.Sprintf("%s;%s", tune.File, tune.Kind))
 		}
 		popover.Popdown()
 	})

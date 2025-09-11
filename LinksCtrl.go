@@ -112,7 +112,7 @@ func (l *ExtLinkCtrl) appendDummyLink() {
 	l.grid.ShowAll()
 
 }
-func (l *ExtLinkCtrl) UpdateTuneLinks(c *ZContext, tuneID int) {
+func (l *ExtLinkCtrl) UpdateTuneLinks(tuneID int) {
 	if tuneID == l.tuneID {
 		return
 	}
@@ -129,7 +129,7 @@ func (l *ExtLinkCtrl) UpdateTuneLinks(c *ZContext, tuneID int) {
 		l.menuButton.SetLabel(fmt.Sprintf("[]XLinks"))
 		return
 	}
-	actualLinks := c.DB.ExtLinkGet(tuneID)
+	actualLinks := DB().ExtLinkGet(tuneID)
 	l.menuButton.SetLabel(fmt.Sprintf("[%d]XLinks", len(actualLinks)))
 	for _, lnk := range actualLinks {
 		l.links = append(l.links, &ExtLinkT{ExtLink: lnk, NotNew: true, LinkValid: true})

@@ -46,7 +46,7 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 	baseReloc := ""
 	needReloc := false
 	reloc := MkButton("Relocate", func() {
-		c := GetContext()
+		c := Context()
 		c.DB.TuneRelocate(c.ActiveTune.ID, baseReloc)
 		c.LoadTuneByID(c.ActiveTune.ID, true, true)
 	})
@@ -91,7 +91,7 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 			fmt.Fprintf(s, "Index: %v\n", tune.BreathnachCode)
 
 			buffer.SetText(s.String())
-			baseReloc, needReloc = GetContext().DB.TuneNeedsReloc(tune.File, tune.Kind)
+			baseReloc, needReloc = DB().TuneNeedsReloc(tune.File, tune.Kind)
 			reloc.SetSensitive(needReloc)
 		} else {
 			buffer.SetText("No tune!")
@@ -103,7 +103,7 @@ func MkTuneInfo(c *ZContext) gtk.IWidget {
 	return b
 }
 func (tc *TuneCtx) Refresh() {
-	tune := GetContext().ActiveTune
+	tune := Context().ActiveTune
 	if tune != nil && tune.ID != 0 {
 		tc.LoadTune(tune, true)
 	}
@@ -151,7 +151,7 @@ func (tc *TuneCtx) TagUpdate() {
 		tc.UpdateTuneTags()
 		TuneTagUpdated = false
 	}
-	if tune := GetContext().ActiveTune; tune != nil {
+	if tune := Context().ActiveTune; tune != nil {
 		for i, t := range zdb.TuneTags {
 			set := false
 			for j := range tune.Lists {
@@ -373,7 +373,7 @@ func (c *ZContext) MkTuneCtx() (*TuneCtx, gtk.IWidget) {
 				b, _ := tc.comment.GetBuffer()
 				start, end := b.GetBounds()
 				tune.Comment, _ = b.GetText(start, end, true)
-				GetContext().DB.TuneFieldUpdate(tune, "comment", tune.Comment)
+				DB().TuneFieldUpdate(tune, "comment", tune.Comment)
 				c.MarkOK()
 			}
 			changePending = false

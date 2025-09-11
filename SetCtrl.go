@@ -29,7 +29,10 @@ func TuneSetSelectorNew(tsSelect func(*zdb.TuneSet)) (gtk.IWidget, *TuneSetSelec
 	setSelector := &TuneSetSelector{
 		selectTuneSet: tsSelect,
 	}
+	frame, _ := gtk.FrameNew("Set Selector")
 	grid, _ := gtk.GridNew()
+	frame.Add(grid)
+
 	setSelector.searchEntry = MkDeferedSearchEntry(&setSelector.suspendChange, func(what string) {
 		setSelector.UpdateCombo(what)
 	})
@@ -43,7 +46,7 @@ func TuneSetSelectorNew(tsSelect func(*zdb.TuneSet)) (gtk.IWidget, *TuneSetSelec
 	})
 
 	curB := MkButton("Cur", func() {
-		if id := GetContext().GetCurrentTuneID(); id != 0 {
+		if id := Context().GetCurrentTuneID(); id != 0 {
 			setSelector.GetTuneSetsForId(id)
 		}
 	})
@@ -66,11 +69,9 @@ func TuneSetSelectorNew(tsSelect func(*zdb.TuneSet)) (gtk.IWidget, *TuneSetSelec
 	grid.AttachNextTo(selB, setSelector.tsSelector, gtk.POS_RIGHT, 2, 1)
 	is++
 
-	return grid, setSelector
+	return frame, setSelector
 }
 func (setSelector *TuneSetSelector) UpdateCombo(txt string) {
-	//fmt.Println("Update Combo:", txt, len(setSelector.tuneSets))
-
 	l := setSelector.nodeSearch.Search(txt)
 	setSelector.fillSelector(l)
 }
@@ -89,18 +90,18 @@ func (setSelector *TuneSetSelector) fillSelector(lIdx []int) {
 	} else {
 		setSelector.tsSelectorIdx = lIdx
 	}
-	for _, n := range setSelector.tsSelectorIdx {
-		txt := util.STruncate(setSelector.tuneSets[n].ToText(), 60)
+	for i, n := range setSelector.tsSelectorIdx {
+		txt := fmt.Sprint(i, util.STruncate(setSelector.tuneSets[n].ToText(), 60))
 		setSelector.tsSelector.AppendText(txt)
 	}
 	setSelector.tsSelector.SetActive(0)
 }
 func (setSelector *TuneSetSelector) GetAllTuneSets() {
-	setSelector.tuneSets = GetContext().DB.TuneSetGetAll()
+	setSelector.tuneSets = DB().TuneSetGetAll()
 	setSelector.RefreshTuneSetSelector()
 }
 func (setSelector *TuneSetSelector) GetTuneSetsForId(id int) {
-	setSelector.tuneSets = GetContext().DB.TuneSetGetForId(id)
+	setSelector.tuneSets = DB().TuneSetGetForId(id)
 	setSelector.RefreshTuneSetSelector()
 }
 
@@ -158,7 +159,7 @@ func MkSetPlayCtrl() (*SetPlayCtrl, gtk.IWidget) {
 	mainGrid.Attach(w, 0, is, gw, 2)
 	is += 2
 	sp.tuneSelector, w = STuneSelectorNew(func(ref *zdb.DTuneReference) {
-		tune := GetContext().DB.TuneGetByID(ref.ID)
+		tune := DB().TuneGetByID(ref.ID)
 		// 3 : default count
 		//sp.listStore.Insert(tune.Title, 3, tune.Tempo, false, tune.ID)
 		sp.listStore.InsertM(map[string]any{
@@ -198,9 +199,7 @@ func MkSetPlayCtrl() (*SetPlayCtrl, gtk.IWidget) {
 	})
 
 	stop := MkButton("Stop", func() {
-		GetContext().metronome.MetronomeHide()
-		GetContext().midiPlayCtrl.Zique().Stop()
-
+		Context().Stop()
 	})
 	mainGrid.Attach(play, 0, is, 2, 1)
 	mainGrid.Attach(stop, gw-2, is, 2, 1)
@@ -215,18 +214,18 @@ func MkSetPlayCtrl() (*SetPlayCtrl, gtk.IWidget) {
 	})
 	del := MkButton("Del", func() {
 		if sp.currentTuneSet.ID != 0 {
-			GetContext().DB.TuneSetRemove(&sp.currentTuneSet)
+			DB().TuneSetRemove(&sp.currentTuneSet)
 		}
 		sp.clear()
 	})
 	print := MkButton("Print...", func() {
 		files := make([]string, 0)
 		for _, t := range sp.currentTuneSet.Tunes {
-			tune := GetContext().DB.TuneGetByID(t.DTuneID)
+			tune := DB().TuneGetByID(t.DTuneID)
 			files = append(files, tune.Img)
 		}
 		if len(files) > 0 {
-			GetContext().printer.Run(files)
+			Context().printer.Run(files)
 		}
 	})
 	mainGrid.Attach(save, 0, is, 2, 1)
@@ -265,16 +264,14 @@ func (sp *SetPlayCtrl) selectTuneSet(ts *zdb.TuneSet) {
 	}
 }
 func (sp *SetPlayCtrl) SaveCurrentTuneSet() {
-	name, _ := sp.name.GetText()
-	if name == "" {
-		Message("Name Required")
+	tunes := sp.listStore.GetValues()
+	if len(tunes) == 0 {
 		return
 	}
-	tunes := sp.listStore.GetValues()
 	sp.currentTuneSet.Tunes = make([]zdb.TuneInSet, len(tunes))
-	sp.currentTuneSet.Name, _ = sp.name.GetText()
-	sp.currentTuneSet.Tempo = sp.tempo.GetValueAsInt()
 
+	sp.currentTuneSet.Tempo = sp.tempo.GetValueAsInt()
+	titles := make([]string, 0)
 	for i := range sp.currentTuneSet.Tunes {
 		t := tunes[i]
 		sp.currentTuneSet.Tunes[i] = zdb.TuneInSet{
@@ -284,14 +281,21 @@ func (sp *SetPlayCtrl) SaveCurrentTuneSet() {
 			Rank:    i,
 			DTuneID: t["_ID"].(int),
 		}
+		titles = append(titles, t["Title"].(string))
 	}
-	GetContext().DB.TuneSetSave(&sp.currentTuneSet)
+	name, _ := sp.name.GetText()
+
+	if name == "" {
+		name = TitleCombine(titles)
+	}
+	sp.currentTuneSet.Name = name
+	DB().TuneSetSave(&sp.currentTuneSet)
 	sp.setSelector.GetAllTuneSets()
 	//	sp.selectTuneSet(sp.currentTuneSet.Name)
 }
 
 func (sp *SetPlayCtrl) play() {
-	GetContext().Stop()
+	Context().Stop()
 	tunes := sp.listStore.GetValues()
 	if len(tunes) == 0 {
 		return
@@ -302,10 +306,10 @@ func (sp *SetPlayCtrl) play() {
 	for i, t := range tunes {
 		Count := t["Count"].(int)
 		TuneID := t["_ID"].(int)
-		theTune := GetContext().DB.TuneGetByID(TuneID)
+		theTune := DB().TuneGetByID(TuneID)
 		playSet[i] = zique.SetElem{File: theTune.Xml, Count: Count}
 	}
-	c := GetContext()
+	c := Context()
 	c.LoadTuneByID(firstID, true, false)
 	if tune := ActiveTune(); tune != nil {
 		c.midiPlayCtrl.SetTempo(sp.tempo.GetValueAsInt(), tune.Kind)
@@ -313,7 +317,7 @@ func (sp *SetPlayCtrl) play() {
 
 	//
 	DelayedAction(sp.menuButton, 2*time.Second, func() {
-		GetContext().midiPlayCtrl.Zique().PlaySet(playSet)
+		Context().midiPlayCtrl.Zique().PlaySet(playSet)
 		c.metronome.MetronomeShow()
 	})
 	sp.popo.Popdown()

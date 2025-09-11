@@ -169,7 +169,7 @@ func (m *Mp3PlayWidget) ResetMarker() {
 	m.Markers = make([]Marker, 0)
 }
 func (m *Mp3PlayWidget) Player() *player.Mp3Player {
-	return GetContext().mp3Player
+	return Context().mp3Player
 }
 func (m *Mp3PlayWidget) Reset() {
 	m.ResetMarker()
@@ -215,7 +215,7 @@ func (p *Mp3PlayWidget) CursorDraw(da *gtk.DrawingArea, cr *cairo.Context) {
 	triangle(cr, step*p.Player().GetProgress(), h/2, 10, 20)
 }
 func (m *Mp3PlayWidget) play(from, to float64, mode int) {
-	GetContext().Stop()
+	Context().Stop()
 	if m.tickCbId != 0 {
 		m.mainCursor.RemoveTickCallback(m.tickCbId)
 		m.tickCbId = 0
@@ -525,7 +525,7 @@ func (m *Mp3Selector) updateResults() {
 }
 func (m *Mp3Selector) doSearch(what string) {
 	withContent := m.withContent.GetActive()
-	m.mp3Files = GetContext().mp3Collection.Search(what, withContent, 100)
+	m.mp3Files = Context().mp3Collection.Search(what, withContent, 100)
 	m.updateResults()
 }
 func (m *Mp3Selector) doSearchCurrent() {
@@ -535,9 +535,9 @@ func (m *Mp3Selector) doSearchCurrent() {
 
 		m.searchText.SetText(title)
 
-		l := GetContext().DB.Mp3SetGetByTuneID(tune.ID)
+		l := Context().DB.Mp3SetGetByTuneID(tune.ID)
 		if len(l) > 0 {
-			m.mp3Files = GetContext().mp3Collection.GetByIds(l)
+			m.mp3Files = Context().mp3Collection.GetByIds(l)
 			m.updateResults()
 		} else {
 			m.doSearch(title)
@@ -589,7 +589,7 @@ func MkMp3Selector(selectFile func(mp3 *zdb.MP3File)) (*Mp3Selector, gtk.IWidget
 		m.doSearchCurrent()
 	})
 	bScan := MkButton("Scan", func() {
-		GetContext().ScanMp3()
+		Context().ScanMp3()
 	})
 	m.withContent, _ = gtk.CheckButtonNewWithLabel("W/ Content")
 	grid.Attach(m.searchText, 0, is, Mp3GWidth-5, 1)
@@ -629,9 +629,9 @@ func (m *Mp3Selector) Preselect(id int) {
 	if id == 0 {
 		return
 	}
-	ids := GetContext().DB.Mp3SetGetByTuneID(id)
+	ids := Context().DB.Mp3SetGetByTuneID(id)
 	if len(ids) > 0 {
-		m.mp3Files = GetContext().mp3Collection.GetByIds(ids)
+		m.mp3Files = Context().mp3Collection.GetByIds(ids)
 		m.updateResults()
 	}
 }

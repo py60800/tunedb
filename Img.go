@@ -49,7 +49,7 @@ func (c *TImage) Draw(img *gtk.DrawingArea, cr *cairo.Context) {
 	}
 
 	imgFile := tune.Img
-	ctx := GetContext()
+	ctx := Context()
 	if ctx.svgt != nil {
 		if _, ok := util.GetModificationDate(ctx.svgt.TempFile); ok {
 			imgFile = ctx.svgt.TempFile

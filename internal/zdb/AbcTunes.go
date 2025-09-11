@@ -11,12 +11,12 @@ import (
 	"path"
 	"strconv"
 	"strings"
-	"time"
+
+	//	"time"
 	"unicode"
 
 	"github.com/py60800/tunedb/internal/util"
-
-	"gorm.io/gorm"
+	// "gorm.io/gorm"
 )
 
 type AbcTune struct {
@@ -131,6 +131,8 @@ func Abc2Xml(abcFile string, dir string) (string, error) {
 	}
 	return result, nil
 }
+
+/*
 func Abc2Svg(abcFile string, dir string) string {
 	base := strings.TrimSuffix(path.Base(abcFile), ".abc")
 	expectedResult := path.Join(dir, base+".svg")
@@ -164,6 +166,7 @@ func Abc2Svg(abcFile string, dir string) string {
 	return result
 }
 
+/*
 var previous map[string]int
 
 func AbcTuneStore(db *TuneDB, tune *AbcTune, TmpDir, XmlDir, ImgDir string) {
@@ -222,6 +225,8 @@ func AbcTuneStore(db *TuneDB, tune *AbcTune, TmpDir, XmlDir, ImgDir string) {
 
 	}
 }
+
+/*
 func AbcParse(db *TuneDB, dir string, recurse bool) {
 	files := GetFileListR(dir, ".abc", recurse)
 	XmlDir := path.Join(dir, "xml")
@@ -237,6 +242,8 @@ func AbcParse(db *TuneDB, dir string, recurse bool) {
 		}
 	}
 }
+
+
 func AbcDBUpdate(db *TuneDB) {
 	dirs := db.SourceRepositoryGetAll()
 	previous = make(map[string]int)
@@ -246,3 +253,4 @@ func AbcDBUpdate(db *TuneDB) {
 		}
 	}
 }
+*/
