@@ -337,10 +337,10 @@ func Parse(fileName string) (MPartition, error) {
 	byteValue, _ := ioutil.ReadAll(xmlFile)
 	err = xml.Unmarshal(byteValue, &partition)
 	util.WarnOnError(err)
-	
+
 	partition.NormalizeDivisions(MasterDivisions)
-	log.Println(partition)
-	
+	//	log.Println(partition)
+
 	return partition, nil
 
 }

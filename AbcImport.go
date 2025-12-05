@@ -18,7 +18,11 @@ func (l *AbcImporter) Start() error {
 	b, _ := l.textView.GetBuffer()
 	start, end := b.GetBounds()
 	txt, _ := b.GetText(start, end, true)
-	return l.importer.Start(txt)
+	message, err := l.importer.Start(txt)
+	if message != "" {
+		Message(message)
+	}
+	return err
 }
 func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 
@@ -42,8 +46,7 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 	grid.Attach(l.textView, 0, 0, 6, 6)
 	is += 6
 
-	importB, _ := gtk.ButtonNewWithLabel("MuseScore Import")
-	importB.Connect("clicked", func() {
+	importB := MkButton("MuseScore Import", func() {
 		err := l.Start()
 		if err != nil {
 			Message(err.Error())
@@ -58,8 +61,7 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 		l.importer.MuseImport()
 		popover.Popdown()
 	})
-	importD, _ := gtk.ButtonNewWithLabel("Direct Import")
-	importD.Connect("clicked", func() {
+	importD := MkButton("Direct Import", func() {
 		err := l.Start()
 		if err != nil {
 			Message(err.Error())
@@ -74,14 +76,12 @@ func (c *ZContext) MkAbcImport() (*AbcImporter, gtk.IWidget) {
 		l.importer.DirectImport()
 		popover.Popdown()
 	})
-	clearB, _ := gtk.ButtonNewWithLabel("Clear")
-	clearB.Connect("clicked", func() {
+	clearB := MkButton("Clear", func() {
 		b, _ := l.textView.GetBuffer()
 		b.SetText("")
 	})
 
-	cancelB, _ := gtk.ButtonNewWithLabel("Cancel")
-	cancelB.Connect("clicked", func() {
+	cancelB := MkButton("Cancel", func() {
 		b, _ := l.textView.GetBuffer()
 		b.SetText("")
 		popover.Popdown()

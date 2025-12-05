@@ -110,7 +110,8 @@ func MakeTempFile(tmpDir string, t *AbcTune, base string) string {
 	return tmpFile
 }
 
-func Abc2Xml(abcFile string, dir string) (string, error) {
+func Abc2XmlPy(abcFile string, dir string) (string, error) {
+
 	cmd := util.H.MkCmd("Abc2Xml", map[string]string{
 		"AbcFile": abcFile,
 		"XmlDir":  dir,

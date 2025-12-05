@@ -36,4 +36,4 @@ require (
 	gorm.io/gorm v1.25.12 // indirect
 )
 
-replace github.com/gotk3/gotk3 => github.com/gotk3/gotk3 v0.6.4.1
+replace github.com/gotk3/gotk3 => github.com/gotk3/gotk3 v0.6.5-0.20240618185848-ff349ae13f56

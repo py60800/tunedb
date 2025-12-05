@@ -54,6 +54,8 @@ func TitleCombine(lst []string) string {
 func doGroup(tv *WTreeStore, val [][]any) []any {
 	res := make([]any, len(val[0]))
 	res[tv.GetColIdx("ID")] = len(val)
+	res[tv.GetColIdx("_ID")] = 0
+
 	res[tv.GetColIdx("Kind")] = "Set"
 	titles := make([]string, 0)
 	for i := range val {
@@ -140,6 +142,19 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 
 	var w gtk.IWidget
 	sp.tuneSelector, w = STuneSelectorNew(func(ref *zdb.DTuneReference) {
+		vals := sp.listStore.GetValues()
+		for i := range vals {
+			if v, ok := vals[i]["_ID"]; ok {
+				if n, isi := v.(int); isi && n == ref.ID {
+					if !MessageConfirm("Already in list") {
+						break
+					} else {
+						return
+					}
+				}
+			}
+		}
+
 		tune := DB().TuneGetByID(ref.ID)
 		sp.listStore.AppendM(nil, map[string]any{
 			"ID":     tune.ID,
@@ -187,11 +202,11 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 		}
 		sp.TuneCtxRefresh()
 	})
-	deDup := MkButton("DeDup", func() {
-		log.Println("Deduplicate TuneList")
-		sp.DeDup()
-	})
-
+	/*	deDup := MkButton("DeDup", func() {
+			log.Println("Deduplicate TuneList")
+			sp.DeDup()
+		})
+	*/
 	clear := MkButton("Clear", func() {
 		sp.clear()
 	})
@@ -215,10 +230,10 @@ func MkListMgr() (*ListMgr, gtk.IWidget) {
 	mainGrid.Attach(save, 0, is, 1, 1)
 	mainGrid.Attach(apply, 1, is, 1, 1)
 	mainGrid.Attach(clear, 2, is, 1, 1)
-	mainGrid.Attach(deDup, 3, is, 1, 1)
-	mainGrid.Attach(del, 4, is, 1, 1)
-	mainGrid.Attach(info, 5, is, 1, 1)
-	mainGrid.Attach(export, 6, is, 1, 1)
+	//	mainGrid.Attach(deDup, 3, is, 1, 1)
+	mainGrid.Attach(del, 3, is, 1, 1)
+	mainGrid.Attach(info, 4, is, 1, 1)
+	mainGrid.Attach(export, 5, is, 1, 1)
 	return sp, sp.menuButton
 
 }
@@ -311,8 +326,10 @@ func (sp *ListMgr) SelectTuneList(ts *zdb.TuneListBase) {
 		if tune.ID != 0 {
 			if tis.Group == zdb.TL_GroupStart {
 				titles := make([]string, 0)
+				gl := 0
 				for j := i; j < len(tl); j++ {
 					titles = append(titles, tunes[j].Title)
+					gl++
 					if tl[j].Group == zdb.TL_GroupEnd {
 						break
 					}
@@ -320,7 +337,7 @@ func (sp *ListMgr) SelectTuneList(ts *zdb.TuneListBase) {
 				parent = sp.listStore.AppendM(nil, map[string]any{
 					"_ID":      0,
 					"_changed": false,
-					"ID":       0,
+					"ID":       gl,
 					"Title":    TitleCombine(titles),
 					"Kind":     "Set",
 					"PlayL":    "",
@@ -353,28 +370,31 @@ func (sp *ListMgr) UpdateCombo() {
 	sp.GetAllTunelist()
 	sp.fillSelector()
 }
-func (sp *ListMgr) DeDup() {
-	tunes := sp.listStore.GetValues()
-	found := make(map[int]int)
-	for i := 0; i < len(tunes); {
-		if _, ok := found[tunes[i]["ID"].(int)]; ok {
-			// duplicate
-			if i == len(tunes)-1 {
-				tunes = tunes[:i]
-				break
+
+/*
+	func (sp *ListMgr) DeDup() {
+		tunes := sp.listStore.GetValues()
+		found := make(map[int]int)
+		for i := 0; i < len(tunes); {
+			if id, ok := found[tunes[i]["_ID"].(int)]; ok && id != 0 {
+				// duplicate
+				if i == len(tunes)-1 {
+					tunes = tunes[:i]
+					break
+				} else {
+					tunes = append(tunes[:i], tunes[i+1:]...)
+				}
 			} else {
-				tunes = append(tunes[:i], tunes[i+1:]...)
+				found[tunes[i]["_ID"].(int)] = 0
+				i++
 			}
-		} else {
-			found[tunes[i]["ID"].(int)] = 0
-			i++
+		}
+		sp.listStore.Clear()
+		for _, t := range tunes {
+			sp.listStore.AppendM(nil, t)
 		}
 	}
-	sp.listStore.Clear()
-	for _, t := range tunes {
-		sp.listStore.AppendM(nil, t)
-	}
-}
+*/
 func (sp *ListMgr) SaveTuneList() bool {
 	name, _ := sp.name.GetText()
 	if name == "" {

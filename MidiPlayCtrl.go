@@ -186,15 +186,19 @@ func (c *ZContext) MkMidiPlayCtrl() (*MidiPlayCtrl, gtk.IWidget) {
 	//Speed
 	lSpeed, _ := gtk.LabelNew("Tempo")
 	cursorGrid.Attach(lSpeed, 0, 0, 1, 1)
+	lTempoValue, _ := gtk.LabelNew("")
+	cursorGrid.Attach(lTempoValue, 0, 1, 1, 1)
 	pm.speed, _ = gtk.ScaleNewWithRange(gtk.ORIENTATION_VERTICAL, 10, 240, 1)
 	pm.speed.SetValue(120)
 	pm.speed.SetInverted(true)
 	pm.speed.SetVExpand(true)
 	pm.speed.Connect("value-changed", func(sp *gtk.Scale) {
-		pm.Zique().SetTempo(int(sp.GetValue()))
+		v := int(sp.GetValue())
+		pm.Zique().SetTempo(v)
+		lTempoValue.SetText(fmt.Sprintf("%d/%d", v/2, (v*2)/3))
 
 	})
-	cursorGrid.AttachNextTo(pm.speed, lSpeed, gtk.POS_BOTTOM, 1, H)
+	cursorGrid.AttachNextTo(pm.speed, lTempoValue, gtk.POS_BOTTOM, 1, H)
 
 	// Volume
 	lVolume, _ := gtk.LabelNew("Vol")

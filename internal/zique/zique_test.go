@@ -26,19 +26,15 @@ func FeedBack(zique *ZiquePlayer) {
 	var evtP Tick
 	for i := 0; ; i++ {
 		evt := <-zique.TickBack
-		fmt.Println(evt, evt.BeatType, coeff[evt.BeatType])
 		now := time.Now()
 		if i > 0 {
 			expected := evtP.TickTime * time.Duration(evtP.Beats*coeff[evtP.BeatType]*evtP.XmlDivisions/4)
 			delta := now.Sub(p)
-			fmt.Printf("Delta : %v %v : Diff %2.2f\n", delta, expected, float64(delta-expected)/float64(expected))
+			fmt.Println(expected, delta)
 		} else {
-
 			beatTime := evt.MeasureLengthTune / evt.Beats
 			beatCount := float64(evt.MeasureLength) / float64(beatTime)
-
-			fmt.Println("Beat Count:", beatCount, "BeatTime", beatTime, "StartBeat:", float64(evt.Beats)-beatCount)
-			//os.Exit(1)
+			fmt.Printf("%v/%v\n", beatTime, beatCount)
 		}
 		evtP = evt
 		p = now

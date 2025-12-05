@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/py60800/abc2xml"
 	"github.com/py60800/tunedb/internal/util"
 	"github.com/py60800/tunedb/internal/zixml"
 )
@@ -43,39 +44,54 @@ type AbcImporter struct {
 	index    string
 	kind     string
 	xmlFile  string
+	message  string
 }
 
 func NewAbcImporter() *AbcImporter {
 	return &AbcImporter{}
 }
-func (imp *AbcImporter) Start(abc string) error {
-	if imp.abc == abc && imp.initDone {
-		return nil
+func (imp *AbcImporter) BuiltInAbc2xml(abc string) error {
+	log.Println("Builtin Abc2xml")
+	parser := abc2xml.Abc2xmlNew()
+	xml, err := parser.Run(abc)
+	util.WarnOnError(err)
+	if err != nil {
+		return err
+	}
+	imp.title = parser.GetTitle()
+	imp.base = NiceName(imp.title)
+	imp.kind = parser.GetRythm()
+	msg := parser.Warnings()
+	imp.message = ""
+	pfx := ""
+	for _, s := range msg {
+		imp.message += pfx + s
+		pfx = "\n"
 	}
 
-	log.Println("AbcImport Start:", strings.ReplaceAll(util.STruncate(abc, 80), "\n", "."))
-	imp.abc = abc
-	imp.initDone = false
-
+	imp.xmlFile = path.Join("tmp", imp.base+".xml")
+	err = os.WriteFile(imp.xmlFile, []byte(xml), 0666)
+	util.WarnOnError(err)
+	return err
+}
+func (imp *AbcImporter) ExternalAbc2xml(abc string) error {
+	log.Println("")
 	txt := strings.Split(abc, "\n")
 	buffer := make([]byte, 0)
 	imp.kind = ""
 	buffer = append(buffer, []byte("X:1\n")...)
 	isAbc := false
 	for i, line := range txt {
-		if strings.TrimSpace(line) == "" {
+		switch {
+		case strings.TrimSpace(line) == "":
+			// Ignore blank line
 			continue
-		}
-		if strings.HasPrefix(line, "X:") {
+		case strings.HasPrefix(line, "X:"):
 			isAbc = true
-			continue
-		}
-		if strings.HasPrefix(line, "R:") {
+		case strings.HasPrefix(line, "R:"):
 			isAbc = true
 			imp.kind = strings.TrimSpace(strings.TrimPrefix(line, "R:"))
-		}
-
-		if strings.HasPrefix(line, "T:") {
+		case strings.HasPrefix(line, "T:"):
 			isAbc = true
 			if imp.title == "" { // Keeps the firt title
 				imp.title = strings.TrimSpace(strings.TrimPrefix(line, "T:"))
@@ -84,6 +100,9 @@ func (imp *AbcImporter) Start(abc string) error {
 		}
 		buffer = append(buffer, []byte(txt[i])...)
 		buffer = append(buffer, byte('\n'))
+		log.Println("AbcImport Start:", strings.ReplaceAll(util.STruncate(abc, 80), "\n", "."))
+		imp.abc = abc
+		imp.initDone = false
 	}
 	if imp.title == "" {
 		imp.title = "Unknown"
@@ -92,7 +111,6 @@ func (imp *AbcImporter) Start(abc string) error {
 	if !isAbc {
 		return fmt.Errorf("Dubious Abc")
 	}
-	log.Println("Importer start:", imp.title)
 	abcFile := path.Join("tmp", imp.base+".abc")
 	f, err := os.Create(abcFile)
 	if err != nil {
@@ -101,11 +119,28 @@ func (imp *AbcImporter) Start(abc string) error {
 	}
 	f.Write(buffer)
 	f.Close()
-	imp.xmlFile, err = Abc2Xml(abcFile, "./tmp")
-	if err == nil {
-		imp.initDone = true
-	}
+	_, err = Abc2XmlPy(abcFile, "./tmp")
 	return err
+
+}
+
+func (imp *AbcImporter) Start(abc string) (string, error) {
+	if imp.abc == abc && imp.initDone {
+		return "Sequence error", nil
+	}
+
+	log.Println("AbcImport Start:", strings.ReplaceAll(util.STruncate(abc, 80), "\n", "."))
+	imp.abc = abc
+	imp.initDone = false
+	imp.message = ""
+	var err error
+	if mode, ok := util.H.Env["Abc2XmlProg"]; !ok || mode == "Builtin" {
+		err = imp.BuiltInAbc2xml(abc)
+	} else {
+		err = imp.ExternalAbc2xml(abc)
+	}
+	imp.initDone = err == nil
+	return imp.message, err
 }
 
 func (imp *AbcImporter) CheckDuplicates() (string, bool) {
@@ -141,9 +176,7 @@ func (imp *AbcImporter) DirectImport() error {
 	targetRep, Kind := guessTarget(imp.kind)
 	msczFile := UniqFileName(path.Join(targetRep, imp.base+".mscz"))
 	if cmd := util.H.MkCmd("Xml2Mscz", map[string]string{
-		"XmlFile":  imp.xmlFile,
-		"MsczFile": msczFile,
-	}); cmd != nil {
+		"XmlFile": imp.xmlFile, "MsczFile": msczFile}); cmd != nil {
 		cmd.Run()
 	}
 	if _, ok := util.GetModificationDate(msczFile); ok {

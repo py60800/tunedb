@@ -53,12 +53,17 @@ func (c *ZContext) MkXchgCtrl() (*XchgCtrl, gtk.IWidget) {
 		}
 		popover.Popdown()
 	})
+	clearB := MkButton("Clear", func() {
+		b, _ := textView.GetBuffer()
+		b.SetText("")
+	})
 	cancelB := MkButton("Cancel", func() {
 		popover.Popdown()
 	})
 	grid.Attach(importB, 0, is, 2, 1)
 	grid.Attach(exportB, 2, is, 2, 1)
-	grid.Attach(cancelB, 4, is, 2, 1)
+	grid.Attach(clearB, 4, is, 2, 1)
+	grid.Attach(cancelB, 6, is, 2, 1)
 
 	return l, menuButton
 }

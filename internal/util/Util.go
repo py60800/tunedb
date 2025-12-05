@@ -54,7 +54,7 @@ func (h *Helper) replace(s string, env map[string]string) string {
 		rep = append(rep, "${"+k+"}")
 		rep = append(rep, v)
 	}
-	for k, v := range h.currEnv {
+	for k, v := range h.Env {
 		rep = append(rep, "${"+k+"}")
 		rep = append(rep, v)
 	}
@@ -75,7 +75,7 @@ func (h *Helper) replace(s string, env map[string]string) string {
 }
 
 type Helper struct {
-	currEnv map[string]string
+	Env map[string]string
 }
 
 var H *Helper
@@ -83,18 +83,18 @@ var H *Helper
 func HelperInit(context string) {
 	helperConfig = ReadConfig[HelperConfig](path.Join(context, "config.yml"), "")
 	//fmt.Println(helperConfig)
-	H = &Helper{currEnv: helperConfig.Helpers}
-	H.currEnv["HOME"], _ = os.UserHomeDir()
+	H = &Helper{Env: helperConfig.Helpers}
+	H.Env["HOME"], _ = os.UserHomeDir()
 }
 func (h *Helper) Get(name string) string {
-	if s, ok := h.currEnv[name]; ok {
+	if s, ok := h.Env[name]; ok {
 		return h.replace(s, map[string]string{})
 	}
 	log.Printf("Environnement lookup error : % v\n", name)
 	return ""
 }
 func (h *Helper) MkCmd(cmd string, params map[string]string) *exec.Cmd {
-	base, ok := h.currEnv[cmd]
+	base, ok := h.Env[cmd]
 	if !ok {
 		log.Printf("Failed to create command : %v\n", cmd)
 		return nil

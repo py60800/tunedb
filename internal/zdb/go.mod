@@ -5,6 +5,11 @@ go 1.23.4
 require (
 	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8
 	github.com/mozillazg/go-unidecode v0.2.0
+	github.com/py60800/abc2xml v0.0.2
+	github.com/py60800/tunedb/internal/search v0.0.0-20250804123008-48838e6d4baa
+	github.com/py60800/tunedb/internal/svgtab v0.0.0-20250911051346-ce63d286f95e
+	github.com/py60800/tunedb/internal/util v0.0.0-20250804123008-48838e6d4baa
+	github.com/py60800/tunedb/internal/zixml v0.0.0-20250804123008-48838e6d4baa
 	gorm.io/driver/sqlite v1.5.7
 	gorm.io/gorm v1.25.12
 )
@@ -16,9 +21,6 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
-	github.com/py60800/tunedb/internal/search v0.0.0-20250804123008-48838e6d4baa // indirect
-	github.com/py60800/tunedb/internal/util v0.0.0-20250804123008-48838e6d4baa // indirect
-	github.com/py60800/tunedb/internal/zixml v0.0.0-20250804123008-48838e6d4baa // indirect
 	github.com/subchen/go-xmldom v1.1.2 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	google.golang.org/api v0.243.0 // indirect

@@ -93,7 +93,7 @@ func OpWait(msg string, msgChan chan string) {
 			if msg == "" {
 				d.Destroy()
 			} else {
-				d.FormatSecondaryText("Hello:%v", msg)
+				d.FormatSecondaryText("Please wait: %v", msg)
 			}
 		default:
 		}

@@ -57,8 +57,6 @@ func ZiquePlayerNew(context string, midiPort string) (*ZiquePlayer, string) {
 }
 
 func (z *ZiquePlayer) init(context string, midiPort string) string {
-
-	//	InitPattern(context)
 	if midiPort == "" {
 		midiPort = "Synth"
 	}

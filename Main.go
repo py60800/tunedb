@@ -280,22 +280,17 @@ func (c *ZContext) PlayMidi() {
 }
 func (c *ZContext) MkPlayCtrl() {
 	c.playCtrl, _ = gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 1)
-	//------------------------------------------- Play Control
-	midiPlay, _ := gtk.ButtonNewWithLabel("Play:Midi")
-	midiPlay.Connect("clicked", func() {
+	midiPlay := MkButton("Play:Midi", func() {
 		c.PlayMidi()
 	})
 	c.playCtrl.Add(midiPlay)
-	c.mp3PlayButton, _ = gtk.ButtonNewWithLabel("Play:MP3")
-	c.mp3PlayButton.Connect("clicked", func() {
+	c.mp3PlayButton = MkButton("Play:MP3", func() {
 		c.Stop()
 		c.mp3SetPlayer.PlayDefault()
-
 	})
 	c.playCtrl.Add(c.mp3PlayButton)
 
-	bstop, _ := gtk.ButtonNewWithLabel("Stop")
-	bstop.Connect("clicked", func() {
+	bstop := MkButton("Stop", func() {
 		c.Stop()
 	})
 	c.playCtrl.Add(bstop)
@@ -309,9 +304,8 @@ var previousAlloc *gtk.Allocation
 
 func (c *ZContext) RefreshTune() {
 	if tune := c.ActiveTune; tune != nil && tune.ID != 0 {
-
 		if tune.FileType == zdb.FileTypeMscz {
-			log.Println("Do RefreshTune")
+			log.Println("Do RefreshTune:", tune.Title)
 			date, _ := util.GetModificationDate(tune.File)
 			c.DB.MsczTuneSave(tune.File, "", date)
 			c.Image.ForceUpdate()

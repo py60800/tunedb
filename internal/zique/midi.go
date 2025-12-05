@@ -2,8 +2,6 @@ package zique
 
 import (
 	"fmt"
-	"log"
-	"sync"
 )
 
 type MStart struct {
@@ -121,27 +119,6 @@ func (p DummyEvent) GetRtMidiEvent() []byte {
 }
 func (p DummyEvent) String() string {
 	return "Dummy Event"
-}
-
-func MidiRecord(pl *Player, mchan chan SeqEvent, ctrlChan chan int, wg *sync.WaitGroup) {
-	for {
-		select {
-		case evt := <-mchan:
-			pl.Sequence = append(pl.Sequence, evt)
-			//			fmt.Println("Midi:", evt)
-
-		case cmd := <-ctrlChan:
-			switch cmd {
-			case 0:
-				log.Println("Midi: Finish")
-				wg.Done()
-				return
-			case 1:
-			}
-		}
-
-	}
-
 }
 
 // ****************************************************
